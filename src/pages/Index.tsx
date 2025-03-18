@@ -30,25 +30,25 @@ const Index = () => {
   // Features data
   const features = [
     {
-      icon: <TrendingUp className="h-8 w-8 text-brand-blue" />,
+      icon: <TrendingUp className="h-8 w-8 text-brand-purple" />,
       title: "Gains Illimités",
       description:
         "Aucune limite sur vos gains. Plus vous partagez, plus vous gagnez.",
     },
     {
-      icon: <Award className="h-8 w-8 text-brand-blue" />,
+      icon: <Award className="h-8 w-8 text-brand-purple" />,
       title: "Récompenses Exclusives",
       description:
         "Bonus spéciaux et avantages pour nos meilleurs affiliés chaque mois.",
     },
     {
-      icon: <DollarSign className="h-8 w-8 text-brand-blue" />,
+      icon: <DollarSign className="h-8 w-8 text-brand-purple" />,
       title: "Paiements Rapides",
       description:
         "Retirez vos gains rapidement via PayPal ou virement bancaire.",
     },
     {
-      icon: <Users className="h-8 w-8 text-brand-blue" />,
+      icon: <Users className="h-8 w-8 text-brand-purple" />,
       title: "Réseau d'Impact",
       description:
         "Transformez votre audience en une source de revenus passive.",
@@ -98,7 +98,7 @@ const Index = () => {
               Commencez dès maintenant et propulsez vos gains.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button asChild size="lg" className="bg-brand-blue hover:bg-blue-600 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
+              <Button asChild size="lg" className="bg-brand-purple hover:bg-purple-700 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
                 <NavLink to="/register">
                   Commencer maintenant
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -138,7 +138,7 @@ const Index = () => {
                   variants={item}
                   className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 card-hover"
                 >
-                  <div className="mb-4 p-3 bg-blue-50 inline-block rounded-xl">
+                  <div className="mb-4 p-3 bg-purple-50 inline-block rounded-xl">
                     {feature.icon}
                   </div>
                   <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
@@ -192,7 +192,7 @@ const Index = () => {
             </div>
 
             <div className="mt-16 text-center">
-              <Button asChild size="lg" className="bg-brand-blue hover:bg-blue-600 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
+              <Button asChild size="lg" className="bg-brand-purple hover:bg-purple-700 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
                 <NavLink to="/register">
                   Rejoindre le programme
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -204,7 +204,7 @@ const Index = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 md:py-24 bg-brand-blue">
+      <section className="py-16 md:py-24 bg-brand-purple">
         <div className="responsive-container">
           <motion.div
             initial={{ opacity: 0 }}
@@ -219,7 +219,7 @@ const Index = () => {
             <p className="text-xl opacity-90 mb-10">
               Inscris-toi maintenant et commence à monétiser ton réseau !
             </p>
-            <Button asChild size="lg" className="bg-white text-brand-blue hover:bg-gray-100 transition-colors btn-hover-effect rounded-xl px-8 py-6 font-medium">
+            <Button asChild size="lg" className="bg-white text-brand-purple hover:bg-gray-100 transition-colors btn-hover-effect rounded-xl px-8 py-6 font-medium">
               <NavLink to="/register">
                 S'inscrire maintenant
                 <ArrowRight className="ml-2 h-5 w-5" />

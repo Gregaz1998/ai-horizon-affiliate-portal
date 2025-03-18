@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -158,7 +159,7 @@ const Leaderboard = () => {
             transition={{ duration: 0.6 }}
             className="max-w-3xl mx-auto text-center mb-12"
           >
-            <span className="inline-block px-3 py-1 bg-blue-100 text-brand-blue rounded-full text-sm font-medium mb-4">
+            <span className="inline-block px-3 py-1 bg-purple-100 text-brand-purple rounded-full text-sm font-medium mb-4">
               Classement
             </span>
             <h1 className="text-3xl md:text-4xl font-bold mb-4">
@@ -315,7 +316,7 @@ const Leaderboard = () => {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true, margin: "-100px" }}
-            className="bg-gradient-to-r from-brand-blue to-blue-600 text-white rounded-2xl p-8 mt-10"
+            className="bg-gradient-to-r from-brand-purple to-purple-600 text-white rounded-2xl p-8 mt-10"
           >
             <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-2xl md:text-3xl font-bold mb-4">

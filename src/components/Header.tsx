@@ -53,8 +53,8 @@ const Header = () => {
               className={({ isActive }) => 
                 `relative font-medium text-sm transition-colors ${
                   isActive 
-                    ? "text-brand-blue" 
-                    : "text-gray-700 hover:text-brand-blue"
+                    ? "text-brand-purple" 
+                    : "text-gray-700 hover:text-brand-purple"
                 }`
               }
             >
@@ -64,7 +64,7 @@ const Header = () => {
                   {isActive && (
                     <motion.div
                       layoutId="navigation-underline"
-                      className="absolute left-0 right-0 h-0.5 bg-brand-blue bottom-[-5px]"
+                      className="absolute left-0 right-0 h-0.5 bg-brand-purple bottom-[-5px]"
                       transition={{ type: "spring", stiffness: 500, damping: 30 }}
                     />
                   )}

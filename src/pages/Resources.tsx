@@ -126,7 +126,7 @@ const Resources = () => {
             transition={{ duration: 0.6 }}
             className="max-w-3xl mx-auto text-center mb-12"
           >
-            <span className="inline-block px-3 py-1 bg-blue-100 text-brand-blue rounded-full text-sm font-medium mb-4">
+            <span className="inline-block px-3 py-1 bg-purple-100 text-brand-purple rounded-full text-sm font-medium mb-4">
               Centre de ressources
             </span>
             <h1 className="text-3xl md:text-4xl font-bold mb-4">

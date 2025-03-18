@@ -63,11 +63,11 @@ const Dashboard = () => {
 
           <div className="mb-8">
             <Card className="overflow-hidden">
-              <CardHeader className="bg-gradient-to-r from-brand-blue to-blue-600 text-white">
+              <CardHeader className="bg-gradient-to-r from-brand-purple to-purple-600 text-white">
                 <div className="flex justify-between items-center">
                   <div>
                     <CardTitle className="text-white">Votre lien d'affiliation</CardTitle>
-                    <CardDescription className="text-blue-100">
+                    <CardDescription className="text-purple-100">
                       Partagez ce lien pour gagner des commissions
                     </CardDescription>
                   </div>
@@ -120,7 +120,7 @@ const Dashboard = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <TrendingUp className="h-5 w-5 mr-2 text-brand-blue" />
+                    <TrendingUp className="h-5 w-5 mr-2 text-brand-purple" />
                     Performance
                   </CardTitle>
                   <CardDescription>
@@ -149,7 +149,7 @@ const Dashboard = () => {
                         <Line 
                           type="monotone" 
                           dataKey="clicks" 
-                          stroke="#0066FF" 
+                          stroke="#be2de2" 
                           strokeWidth={2} 
                           dot={{ r: 4 }} 
                           activeDot={{ r: 6 }} 
@@ -157,7 +157,7 @@ const Dashboard = () => {
                         <Line 
                           type="monotone" 
                           dataKey="conversions" 
-                          stroke="#26C6DA" 
+                          stroke="#d277ed" 
                           strokeWidth={2} 
                           dot={{ r: 4 }} 
                           activeDot={{ r: 6 }} 
@@ -180,7 +180,7 @@ const Dashboard = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
-                      <Users className="h-5 w-5 mr-2 text-brand-blue" />
+                      <Users className="h-5 w-5 mr-2 text-brand-purple" />
                       Trafic par source
                     </CardTitle>
                     <CardDescription>
@@ -210,7 +210,7 @@ const Dashboard = () => {
                               border: "none" 
                             }}
                           />
-                          <Bar dataKey="value" fill="#0066FF" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="value" fill="#be2de2" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -220,7 +220,7 @@ const Dashboard = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center">
-                      <Clock className="h-5 w-5 mr-2 text-brand-blue" />
+                      <Clock className="h-5 w-5 mr-2 text-brand-purple" />
                       Activité récente
                     </CardTitle>
                     <CardDescription>
@@ -240,7 +240,7 @@ const Dashboard = () => {
                             <p className="font-medium text-sm">{item.action}</p>
                             <p className="text-xs text-gray-500">{item.time}</p>
                           </div>
-                          <span className="text-xs font-medium px-2 py-1 bg-blue-100 text-brand-blue rounded-full">
+                          <span className="text-xs font-medium px-2 py-1 bg-purple-100 text-brand-purple rounded-full">
                             {item.source}
                           </span>
                         </div>
@@ -332,9 +332,9 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-6 md:grid-cols-3 mb-8">
-                    <div className="bg-blue-50 rounded-xl p-6">
+                    <div className="bg-purple-50 rounded-xl p-6">
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Montant disponible</h3>
-                      <p className="text-3xl font-bold text-brand-blue">468,90 €</p>
+                      <p className="text-3xl font-bold text-brand-purple">468,90 €</p>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-6">
                       <h3 className="text-sm font-medium text-gray-500 mb-1">En attente</h3>

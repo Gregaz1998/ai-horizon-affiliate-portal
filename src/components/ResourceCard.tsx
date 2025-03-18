@@ -28,7 +28,7 @@ const ResourceCard = ({
           style={{ backgroundImage: `url(${imageUrl})` }}
         />
         <div className="absolute top-4 left-4">
-          <span className="px-3 py-1 text-xs font-medium bg-white text-brand-blue rounded-full">
+          <span className="px-3 py-1 text-xs font-medium bg-white text-brand-purple rounded-full">
             {category}
           </span>
         </div>
