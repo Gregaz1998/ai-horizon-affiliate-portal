@@ -1,179 +1,198 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-export const AffiliateService = {
-  async createAffiliateLink(userId: string, customCode?: string): Promise<string | null> {
+export interface AffiliateLink {
+  id: string;
+  user_id: string;
+  code: string;
+  created_at: string;
+}
+
+export interface AffiliateStats {
+  clicks: number;
+  conversions: number;
+  revenue: number;
+}
+
+export interface ConversionData {
+  id: string;
+  affiliate_link_id: string;
+  product: string;
+  amount: number;
+  status: string;
+  created_at: string;
+}
+
+export interface ClickData {
+  id: string;
+  affiliate_link_id: string;
+  created_at: string;
+}
+
+export class AffiliateService {
+  static async createAffiliateLink(userId: string, code: string): Promise<{ data: AffiliateLink | null; error: Error | null }> {
     try {
-      const code = customCode || this.generateAffiliateCode();
-      
       const { data, error } = await supabase
         .from('affiliate_links')
         .insert([
-          { user_id: userId, code: code }
+          { user_id: userId, code }
         ])
         .select()
         .single();
-      
+
       if (error) throw error;
       
-      return data.code;
+      return { data, error: null };
     } catch (error) {
-      console.error('Error creating affiliate link:', error);
-      return null;
+      console.error("Error creating affiliate link:", error);
+      return { data: null, error: error as Error };
     }
-  },
+  }
 
-  async getAffiliateLink(userId: string): Promise<string | null> {
+  static async getAffiliateLink(userId: string): Promise<{ data: AffiliateLink | null; error: Error | null }> {
     try {
       const { data, error } = await supabase
         .from('affiliate_links')
-        .select('code')
+        .select('*')
         .eq('user_id', userId)
         .single();
-      
-      if (error) {
-        // If no link exists, create one
-        if (error.code === 'PGRST116') {
-          return this.createAffiliateLink(userId);
-        }
-        throw error;
-      }
-      
-      return data.code;
-    } catch (error) {
-      console.error('Error getting affiliate link:', error);
-      return null;
-    }
-  },
 
-  async trackClick(code: string): Promise<boolean> {
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      return { data, error: null };
+    } catch (error) {
+      console.error("Error getting affiliate link:", error);
+      return { data: null, error: error as Error };
+    }
+  }
+
+  static async getAffiliateStats(userId: string): Promise<{ data: AffiliateStats | null; error: Error | null }> {
     try {
-      // First get the affiliate link id
-      const { data: linkData, error: linkError } = await supabase
-        .from('affiliate_links')
-        .select('id')
-        .eq('code', code)
-        .single();
+      // Get the affiliate link for this user
+      const { data: affiliateLink, error: linkError } = await this.getAffiliateLink(userId);
       
       if (linkError) throw linkError;
+      if (!affiliateLink) return { data: { clicks: 0, conversions: 0, revenue: 0 }, error: null };
+
+      // Get clicks count
+      const { count: clicks, error: clicksError } = await supabase
+        .from('clicks')
+        .select('*', { count: 'exact', head: true })
+        .eq('affiliate_link_id', affiliateLink.id);
+
+      if (clicksError) throw clicksError;
+
+      // Get conversions and revenue
+      const { data: conversions, error: conversionsError } = await supabase
+        .from('conversions')
+        .select('*')
+        .eq('affiliate_link_id', affiliateLink.id);
+
+      if (conversionsError) throw conversionsError;
+
+      const revenue = conversions.reduce((sum, conversion) => sum + conversion.amount, 0);
+
+      return { 
+        data: { 
+          clicks: clicks || 0, 
+          conversions: conversions.length, 
+          revenue 
+        }, 
+        error: null 
+      };
+    } catch (error) {
+      console.error("Error getting affiliate stats:", error);
+      return { data: null, error: error as Error };
+    }
+  }
+
+  static async getConversions(userId: string): Promise<{ data: ConversionData[] | null; error: Error | null }> {
+    try {
+      const { data: affiliateLink, error: linkError } = await this.getAffiliateLink(userId);
       
-      // Then track the click
+      if (linkError) throw linkError;
+      if (!affiliateLink) return { data: [], error: null };
+
+      const { data, error } = await supabase
+        .from('conversions')
+        .select('*')
+        .eq('affiliate_link_id', affiliateLink.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      return { data, error: null };
+    } catch (error) {
+      console.error("Error getting conversions:", error);
+      return { data: null, error: error as Error };
+    }
+  }
+
+  static async getClicks(userId: string): Promise<{ data: ClickData[] | null; error: Error | null }> {
+    try {
+      const { data: affiliateLink, error: linkError } = await this.getAffiliateLink(userId);
+      
+      if (linkError) throw linkError;
+      if (!affiliateLink) return { data: [], error: null };
+
+      const { data, error } = await supabase
+        .from('clicks')
+        .select('*')
+        .eq('affiliate_link_id', affiliateLink.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      return { data, error: null };
+    } catch (error) {
+      console.error("Error getting clicks:", error);
+      return { data: null, error: error as Error };
+    }
+  }
+
+  // For testing only: Simulate a click on an affiliate link
+  static async simulateClick(affiliateLinkId: string): Promise<{ success: boolean; error: Error | null }> {
+    try {
       const { error } = await supabase
         .from('clicks')
         .insert([
           { 
-            affiliate_link_id: linkData.id,
-            referrer: document.referrer,
-            user_agent: navigator.userAgent
+            affiliate_link_id: affiliateLinkId, 
+            ip_address: '127.0.0.1', 
+            user_agent: 'test-agent', 
+            referrer: 'test-referrer' 
           }
         ]);
-      
+
       if (error) throw error;
       
-      return true;
+      return { success: true, error: null };
     } catch (error) {
-      console.error('Error tracking click:', error);
-      return false;
+      console.error("Error simulating click:", error);
+      return { success: false, error: error as Error };
     }
-  },
-
-  async getStats(userId: string) {
-    try {
-      // Get all affiliate links for this user
-      const { data: linksData, error: linksError } = await supabase
-        .from('affiliate_links')
-        .select('id')
-        .eq('user_id', userId);
-      
-      if (linksError) throw linksError;
-      
-      if (!linksData || linksData.length === 0) {
-        return {
-          clicks: 0,
-          conversions: 0,
-          conversionRate: 0,
-          revenue: 0
-        };
-      }
-      
-      const linkIds = linksData.map(link => link.id);
-      
-      // Get clicks count
-      const { count: clicksCount, error: clicksError } = await supabase
-        .from('clicks')
-        .select('*', { count: 'exact', head: true })
-        .in('affiliate_link_id', linkIds);
-      
-      if (clicksError) throw clicksError;
-      
-      // Get conversions
-      const { data: conversionsData, error: conversionsError } = await supabase
-        .from('conversions')
-        .select('*')
-        .in('affiliate_link_id', linkIds);
-      
-      if (conversionsError) throw conversionsError;
-      
-      const conversionsCount = conversionsData?.length || 0;
-      
-      // Calculate total revenue
-      const revenue = conversionsData?.reduce((sum, conversion) => sum + parseFloat(conversion.amount), 0) || 0;
-      
-      // Calculate conversion rate
-      const conversionRate = clicksCount ? (conversionsCount / clicksCount) * 100 : 0;
-      
-      return {
-        clicks: clicksCount || 0,
-        conversions: conversionsCount,
-        conversionRate: parseFloat(conversionRate.toFixed(2)),
-        revenue: parseFloat(revenue.toFixed(2))
-      };
-    } catch (error) {
-      console.error('Error getting stats:', error);
-      return {
-        clicks: 0,
-        conversions: 0,
-        conversionRate: 0,
-        revenue: 0
-      };
-    }
-  },
-
-  generateAffiliateCode(): string {
-    const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    const length = 8;
-    let result = '';
-    
-    for (let i = 0; i < length; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    
-    return result;
-  },
-
-  setupRealtimeListeners(userId: string, onUpdate: () => void) {
-    return supabase
-      .channel('affiliate-activity')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'clicks',
-          filter: `affiliate_link_id=in.(select id from affiliate_links where user_id=eq.${userId})`
-        },
-        () => onUpdate()
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'conversions',
-          filter: `affiliate_link_id=in.(select id from affiliate_links where user_id=eq.${userId})`
-        },
-        () => onUpdate()
-      )
-      .subscribe();
   }
-};
+
+  // For testing only: Simulate a conversion
+  static async simulateConversion(affiliateLinkId: string, amount: string): Promise<{ success: boolean; error: Error | null }> {
+    try {
+      const { error } = await supabase
+        .from('conversions')
+        .insert([
+          { 
+            affiliate_link_id: affiliateLinkId, 
+            product: 'Test Product', 
+            amount: parseFloat(amount),
+            status: 'completed'
+          }
+        ]);
+
+      if (error) throw error;
+      
+      return { success: true, error: null };
+    } catch (error) {
+      console.error("Error simulating conversion:", error);
+      return { success: false, error: error as Error };
+    }
+  }
+}

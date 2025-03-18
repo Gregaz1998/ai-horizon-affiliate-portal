@@ -12,7 +12,8 @@ import {
   FileText, 
   Link, 
   LayoutDashboard,
-  Loader2
+  Loader2,
+  Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,8 +68,10 @@ const RegistrationSteps = () => {
     paypalEmail: "",
     bankName: "",
     accountNumber: "",
+    businessNumber: "",
     acceptTerms: false,
     acceptPrivacy: false,
+    hasBusinessNumber: true,
     affiliateLink: "",
     niche: "technology",
   });
@@ -101,6 +104,21 @@ const RegistrationSteps = () => {
     });
   };
 
+  const handleBusinessNumberChange = (value: string) => {
+    setFormData({
+      ...formData,
+      hasBusinessNumber: value === "yes",
+    });
+    
+    // Clear business number error if they're saying they don't have one
+    if (value === "no" && errors.businessNumber) {
+      setErrors({
+        ...errors,
+        businessNumber: "",
+      });
+    }
+  };
+
   const validateStep = () => {
     const newErrors: Record<string, string> = {};
     
@@ -128,6 +146,9 @@ const RegistrationSteps = () => {
         if (!formData.accountNumber) newErrors.accountNumber = "Le numéro de compte est requis";
       }
     } else if (currentStep === 3) {
+      if (formData.hasBusinessNumber && !formData.businessNumber) {
+        newErrors.businessNumber = "Le numéro d'entreprise est requis";
+      }
       if (!formData.acceptTerms) {
         newErrors.acceptTerms = "Vous devez accepter les conditions générales";
       }
@@ -150,6 +171,7 @@ const RegistrationSteps = () => {
         paymentDetails: formData.paymentMethod === "paypal" 
           ? { paypalEmail: formData.paypalEmail }
           : { bankName: formData.bankName, accountNumber: formData.accountNumber },
+        businessNumber: formData.businessNumber,
         niche: formData.niche
       });
       
@@ -423,20 +445,95 @@ const RegistrationSteps = () => {
                 2. <strong>Admissibilité</strong> : Pour participer au programme d'affiliation, vous devez avoir au moins 18 ans et détenir un compte utilisateur valide.
               </p>
               <p className="mb-4">
-                3. <strong>Commissions</strong> : Vous recevrez une commission sur chaque achat effectué par un utilisateur qui a utilisé votre lien d'affiliation. Le taux de commission est indiqué dans votre tableau de bord et peut être modifié à tout moment.
+                3. <strong>Numéro d'entreprise obligatoire</strong> : Vous devez disposer d'un numéro d'entreprise valide pour participer au programme d'affiliation et recevoir des commissions.
               </p>
               <p className="mb-4">
-                4. <strong>Paiements</strong> : Les paiements sont effectués selon la méthode choisie une fois que le seuil minimum est atteint. Le seuil minimum et la fréquence des paiements sont indiqués dans votre tableau de bord.
+                4. <strong>Commissions</strong> : Vous recevrez une commission sur chaque achat effectué par un utilisateur qui a utilisé votre lien d'affiliation. Le taux de commission est indiqué dans votre tableau de bord et peut être modifié à tout moment.
               </p>
               <p className="mb-4">
-                5. <strong>Respect des lois</strong> : Vous vous engagez à respecter toutes les lois et réglementations applicables, y compris celles relatives à la publicité, à la protection des données et au marketing.
+                5. <strong>Paiements</strong> : Les paiements sont effectués selon la méthode choisie une fois que le seuil minimum est atteint. Le seuil minimum et la fréquence des paiements sont indiqués dans votre tableau de bord.
               </p>
               <p className="mb-4">
-                6. <strong>Interdictions</strong> : Il est interdit d'utiliser des techniques de spam, de fraude ou toute autre méthode déloyale pour promouvoir votre lien d'affiliation. AI Horizon se réserve le droit de suspendre ou de résilier votre compte en cas de violation.
+                6. <strong>Respect des lois</strong> : Vous vous engagez à respecter toutes les lois et réglementations applicables, y compris celles relatives à la publicité, à la protection des données et au marketing.
               </p>
               <p className="mb-4">
-                7. <strong>Modification des conditions</strong> : AI Horizon se réserve le droit de modifier les présentes conditions à tout moment. Les modifications prennent effet dès leur publication.
+                7. <strong>Interdictions</strong> : Il est interdit d'utiliser des techniques de spam, de fraude ou toute autre méthode déloyale pour promouvoir votre lien d'affiliation. AI Horizon se réserve le droit de suspendre ou de résilier votre compte en cas de violation.
               </p>
+              <p className="mb-4">
+                8. <strong>Modification des conditions</strong> : AI Horizon se réserve le droit de modifier les présentes conditions à tout moment. Les modifications prennent effet dès leur publication.
+              </p>
+            </div>
+
+            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-6">
+              <div className="flex items-start">
+                <Building2 className="h-5 w-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-semibold text-blue-800">Numéro d'entreprise requis</h3>
+                  <p className="text-sm text-blue-700 mb-2">
+                    Pour participer au programme d'affiliation, vous devez disposer d'un numéro d'entreprise valide.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <RadioGroup 
+                  value={formData.hasBusinessNumber ? "yes" : "no"} 
+                  onValueChange={handleBusinessNumberChange}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="yes" id="has-business-number" />
+                    <Label htmlFor="has-business-number" className="cursor-pointer">
+                      J'ai un numéro d'entreprise
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="no" id="no-business-number" />
+                    <Label htmlFor="no-business-number" className="cursor-pointer">
+                      Je n'ai pas encore de numéro d'entreprise
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              {formData.hasBusinessNumber ? (
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="businessNumber">Votre numéro d'entreprise</Label>
+                  <Input
+                    id="businessNumber"
+                    name="businessNumber"
+                    value={formData.businessNumber}
+                    onChange={handleInputChange}
+                    placeholder="ex: BE0123.456.789"
+                    className={errors.businessNumber ? "border-red-500" : ""}
+                  />
+                  {errors.businessNumber && (
+                    <p className="text-red-500 text-sm">{errors.businessNumber}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800 mb-2">
+                    Vous n'avez pas encore de numéro d'entreprise ? Nous vous recommandons de contacter une coopérative d'activités comme Smart pour en obtenir un rapidement.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <a 
+                      href="https://smartbe.be/fr/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-sm px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded flex items-center justify-center"
+                    >
+                      Visiter SmartBE
+                    </a>
+                    <a 
+                      href="tel:+32493163742" 
+                      className="text-sm px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded flex items-center justify-center"
+                    >
+                      Contact d'urgence: +32493163742
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
