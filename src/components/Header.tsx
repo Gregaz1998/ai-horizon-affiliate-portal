@@ -2,21 +2,26 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
+import LoginDialog from "@/components/LoginDialog";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
+  // Filter navLinks based on auth status
   const navLinks = [
-    { name: "Accueil", path: "/" },
-    { name: "Inscription", path: "/register" },
-    { name: "Tableau de bord", path: "/dashboard" },
-    { name: "Ressources", path: "/resources" },
-    { name: "Classement", path: "/leaderboard" },
-  ];
+    { name: "Accueil", path: "/", public: true },
+    { name: "Inscription", path: "/register", public: true, hideWhenLoggedIn: true },
+    { name: "Tableau de bord", path: "/dashboard", public: false },
+    { name: "Ressources", path: "/resources", public: false },
+    { name: "Classement", path: "/leaderboard", public: false },
+  ].filter(link => link.public || user)
+    .filter(link => !(link.hideWhenLoggedIn && user));
 
   useEffect(() => {
     const handleScroll = () => {
@@ -72,6 +77,30 @@ const Header = () => {
               )}
             </NavLink>
           ))}
+          
+          {user ? (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={signOut}
+              className="text-gray-700 hover:text-brand-purple"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Déconnexion
+            </Button>
+          ) : (
+            <LoginDialog
+              trigger={
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-brand-purple text-brand-purple hover:bg-brand-purple hover:text-white"
+                >
+                  Se connecter
+                </Button>
+              }
+            />
+          )}
         </nav>
 
         {/* Mobile Menu Button */}
@@ -113,6 +142,28 @@ const Header = () => {
                   {link.name}
                 </NavLink>
               ))}
+              
+              {user ? (
+                <Button 
+                  variant="ghost" 
+                  onClick={signOut}
+                  className="justify-start"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Déconnexion
+                </Button>
+              ) : (
+                <LoginDialog
+                  trigger={
+                    <Button 
+                      variant="outline" 
+                      className="border-brand-purple text-brand-purple hover:bg-brand-purple hover:text-white"
+                    >
+                      Se connecter
+                    </Button>
+                  }
+                />
+              )}
             </nav>
           </motion.div>
         )}

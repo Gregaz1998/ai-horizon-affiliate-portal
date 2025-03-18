@@ -4,8 +4,12 @@ import { ArrowRight, TrendingUp, Award, DollarSign, Users } from "lucide-react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import LoginDialog from "@/components/LoginDialog";
 
 const Index = () => {
+  const { user } = useAuth();
+
   // Animation variants
   const container = {
     hidden: { opacity: 0 },
@@ -98,15 +102,35 @@ const Index = () => {
               Commencez dès maintenant et propulsez vos gains.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button asChild size="lg" className="bg-brand-purple hover:bg-purple-700 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
-                <NavLink to="/register">
-                  Commencer maintenant
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </NavLink>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="rounded-xl px-8 py-6">
-                <a href="#how-it-works">En savoir plus</a>
-              </Button>
+              {user ? (
+                <Button asChild size="lg" className="bg-brand-purple hover:bg-purple-700 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
+                  <NavLink to="/dashboard">
+                    Accéder au tableau de bord
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </NavLink>
+                </Button>
+              ) : (
+                <Button asChild size="lg" className="bg-brand-purple hover:bg-purple-700 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
+                  <NavLink to="/register">
+                    Commencer maintenant
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </NavLink>
+                </Button>
+              )}
+              
+              {user ? (
+                <Button asChild variant="outline" size="lg" className="rounded-xl px-8 py-6">
+                  <a href="#how-it-works">En savoir plus</a>
+                </Button>
+              ) : (
+                <LoginDialog
+                  trigger={
+                    <Button variant="outline" size="lg" className="rounded-xl px-8 py-6">
+                      Je me connecte
+                    </Button>
+                  }
+                />
+              )}
             </div>
           </motion.div>
         </div>
@@ -192,12 +216,21 @@ const Index = () => {
             </div>
 
             <div className="mt-16 text-center">
-              <Button asChild size="lg" className="bg-brand-purple hover:bg-purple-700 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
-                <NavLink to="/register">
-                  Rejoindre le programme
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </NavLink>
-              </Button>
+              {user ? (
+                <Button asChild size="lg" className="bg-brand-purple hover:bg-purple-700 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
+                  <NavLink to="/dashboard">
+                    Accéder au tableau de bord
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </NavLink>
+                </Button>
+              ) : (
+                <Button asChild size="lg" className="bg-brand-purple hover:bg-purple-700 transition-colors btn-hover-effect rounded-xl px-8 py-6 text-white font-medium">
+                  <NavLink to="/register">
+                    Rejoindre le programme
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </NavLink>
+                </Button>
+              )}
             </div>
           </motion.div>
         </div>
@@ -217,14 +250,23 @@ const Index = () => {
               Prêt à générer des revenus avec AI Horizon ?
             </h2>
             <p className="text-xl opacity-90 mb-10">
-              Inscris-toi maintenant et commence à monétiser ton réseau !
+              {user ? "Accédez à votre tableau de bord pour commencer !" : "Inscris-toi maintenant et commence à monétiser ton réseau !"}
             </p>
-            <Button asChild size="lg" className="bg-white text-brand-purple hover:bg-gray-100 transition-colors btn-hover-effect rounded-xl px-8 py-6 font-medium">
-              <NavLink to="/register">
-                S'inscrire maintenant
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </NavLink>
-            </Button>
+            {user ? (
+              <Button asChild size="lg" className="bg-white text-brand-purple hover:bg-gray-100 transition-colors btn-hover-effect rounded-xl px-8 py-6 font-medium">
+                <NavLink to="/dashboard">
+                  Accéder au tableau de bord
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </NavLink>
+              </Button>
+            ) : (
+              <Button asChild size="lg" className="bg-white text-brand-purple hover:bg-gray-100 transition-colors btn-hover-effect rounded-xl px-8 py-6 font-medium">
+                <NavLink to="/register">
+                  S'inscrire maintenant
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </NavLink>
+              </Button>
+            )}
           </motion.div>
         </div>
       </section>

@@ -2,8 +2,17 @@
 import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
 import RegistrationSteps from "@/components/RegistrationSteps";
+import { useAuth } from "@/context/AuthContext";
+import { Navigate } from "react-router-dom";
 
 const Register = () => {
+  const { user } = useAuth();
+
+  // If user is already logged in, redirect to dashboard
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <Layout>
       <section className="pt-32 pb-20">

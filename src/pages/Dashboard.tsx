@@ -1,51 +1,126 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LineChart, BarChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Copy, Download, TrendingUp, Clock, Link as LinkIcon, Users } from "lucide-react";
+import { Copy, Download, TrendingUp, Clock, Link as LinkIcon, Users, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
 import AffiliateStats from "@/components/AffiliateStats";
+import { useAuth } from "@/context/AuthContext";
+import { AffiliateService } from "@/services/AffiliateService";
+import { supabase } from "@/integrations/supabase/client";
 
-// Sample data
-const performanceData = [
-  { name: "Jan", clicks: 65, conversions: 4, revenue: 42 },
-  { name: "Fév", clicks: 78, conversions: 5, revenue: 63 },
-  { name: "Mar", clicks: 90, conversions: 6, revenue: 78 },
-  { name: "Avr", clicks: 81, conversions: 5, revenue: 68 },
-  { name: "Mai", clicks: 156, conversions: 10, revenue: 125 },
-  { name: "Juin", clicks: 230, conversions: 17, revenue: 213 },
-  { name: "Juil", clicks: 310, conversions: 22, revenue: 298 },
-  { name: "Août", clicks: 220, conversions: 15, revenue: 189 },
-  { name: "Sep", clicks: 201, conversions: 14, revenue: 170 },
-  { name: "Oct", clicks: 251, conversions: 18, revenue: 220 },
-  { name: "Nov", clicks: 298, conversions: 21, revenue: 273 },
-  { name: "Déc", clicks: 101, conversions: 7, revenue: 88 },
-];
-
-const latestConversions = [
-  { id: 1, product: "AI Horizon Pro", date: "Aujourd'hui, 15:32", amount: "99,00 €", status: "Validé" },
-  { id: 2, product: "AI Horizon Enterprise", date: "Hier, 10:14", amount: "299,00 €", status: "En attente" },
-  { id: 3, product: "AI Horizon Pro", date: "18 Oct, 18:05", amount: "99,00 €", status: "Validé" },
-  { id: 4, product: "AI Horizon Basic", date: "16 Oct, 09:22", amount: "49,00 €", status: "Validé" },
-  { id: 5, product: "AI Horizon Pro", date: "14 Oct, 14:39", amount: "99,00 €", status: "Validé" },
+// Sample data for when we don't have real data yet
+const samplePerformanceData = [
+  { name: "Jan", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Fév", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Mar", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Avr", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Mai", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Juin", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Juil", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Août", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Sep", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Oct", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Nov", clicks: 0, conversions: 0, revenue: 0 },
+  { name: "Déc", clicks: 0, conversions: 0, revenue: 0 },
 ];
 
 const Dashboard = () => {
   const [timeRange, setTimeRange] = useState("yearly");
+  const [affiliateLink, setAffiliateLink] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({ clicks: 0, conversions: 0, conversionRate: 0, revenue: 0 });
+  const [conversions, setConversions] = useState([]);
+  const [performanceData, setPerformanceData] = useState(samplePerformanceData);
   const { toast } = useToast();
+  const { user } = useAuth();
   
-  const affiliateLink = "aihorizon.com/ref/johndoe-a1b2c3";
+  const fullAffiliateLink = affiliateLink ? `aihorizon.com/ref/${affiliateLink}` : "";
+
+  // Load affiliate link and stats when component mounts
+  useEffect(() => {
+    if (!user) return;
+    
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        // Get or create affiliate link
+        const code = await AffiliateService.getAffiliateLink(user.id);
+        if (code) {
+          setAffiliateLink(code);
+        }
+        
+        // Get stats
+        const userStats = await AffiliateService.getStats(user.id);
+        setStats(userStats);
+        
+        // Get conversions
+        const { data: linksData } = await supabase
+          .from('affiliate_links')
+          .select('id')
+          .eq('user_id', user.id);
+          
+        if (linksData && linksData.length > 0) {
+          const linkIds = linksData.map(link => link.id);
+          
+          const { data } = await supabase
+            .from('conversions')
+            .select('*')
+            .in('affiliate_link_id', linkIds)
+            .order('created_at', { ascending: false })
+            .limit(10);
+            
+          setConversions(data || []);
+        }
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger vos données. Veuillez réessayer.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    loadData();
+    
+    // Set up realtime listeners for stats updates
+    const channel = AffiliateService.setupRealtimeListeners(user.id, () => {
+      // Refresh stats when new activity occurs
+      AffiliateService.getStats(user.id).then(newStats => setStats(newStats));
+    });
+    
+    return () => {
+      // Clean up listener
+      supabase.removeChannel(channel);
+    };
+  }, [user, toast]);
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(affiliateLink);
+    navigator.clipboard.writeText(fullAffiliateLink);
     toast({
       description: "Lien d'affiliation copié !",
     });
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <section className="pt-28 pb-16 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-brand-purple mx-auto mb-4" />
+            <p>Chargement de votre tableau de bord...</p>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -85,7 +160,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
                   <div className="flex items-center">
                     <LinkIcon className="h-4 w-4 text-gray-400 mr-2" />
-                    <span className="text-gray-800 font-medium">{affiliateLink}</span>
+                    <span className="text-gray-800 font-medium">{fullAffiliateLink}</span>
                   </div>
                 </div>
               </CardContent>
@@ -93,7 +168,7 @@ const Dashboard = () => {
           </div>
 
           <div className="mb-8">
-            <AffiliateStats />
+            <AffiliateStats stats={stats} />
           </div>
 
           <Tabs defaultValue="performance" className="mb-8">
@@ -128,51 +203,71 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={performanceData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                  {stats.clicks === 0 && stats.conversions === 0 ? (
+                    <div className="h-80 flex flex-col items-center justify-center text-center p-8">
+                      <div className="p-4 rounded-full bg-purple-50 mb-4">
+                        <TrendingUp className="h-8 w-8 text-brand-purple" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2">Pas encore de données à afficher</h3>
+                      <p className="text-gray-500 max-w-md mb-4">
+                        Partagez votre lien d'affiliation pour commencer à collecter des statistiques. 
+                        Revenez ici pour suivre votre performance en temps réel.
+                      </p>
+                      <Button 
+                        onClick={handleCopyLink} 
+                        className="bg-brand-purple hover:bg-purple-700"
                       >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: "white", 
-                            borderRadius: "8px", 
-                            boxShadow: "0 4px 12px rgba(0,0,0,0.1)", 
-                            border: "none" 
-                          }} 
-                        />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="clicks" 
-                          stroke="#be2de2" 
-                          strokeWidth={2} 
-                          dot={{ r: 4 }} 
-                          activeDot={{ r: 6 }} 
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="conversions" 
-                          stroke="#d277ed" 
-                          strokeWidth={2} 
-                          dot={{ r: 4 }} 
-                          activeDot={{ r: 6 }} 
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="revenue" 
-                          stroke="#66BB6A" 
-                          strokeWidth={2} 
-                          dot={{ r: 4 }} 
-                          activeDot={{ r: 6 }} 
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copier mon lien d'affiliation
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={performanceData}
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: "white", 
+                              borderRadius: "8px", 
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.1)", 
+                              border: "none" 
+                            }} 
+                          />
+                          <Legend />
+                          <Line 
+                            type="monotone" 
+                            dataKey="clicks" 
+                            stroke="#be2de2" 
+                            strokeWidth={2} 
+                            dot={{ r: 4 }} 
+                            activeDot={{ r: 6 }} 
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="conversions" 
+                            stroke="#d277ed" 
+                            strokeWidth={2} 
+                            dot={{ r: 4 }} 
+                            activeDot={{ r: 6 }} 
+                          />
+                          <Line 
+                            type="monotone" 
+                            dataKey="revenue" 
+                            stroke="#66BB6A" 
+                            strokeWidth={2} 
+                            dot={{ r: 4 }} 
+                            activeDot={{ r: 6 }} 
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -188,32 +283,41 @@ const Dashboard = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={[
-                            { name: "Social", value: 45 },
-                            { name: "Blog", value: 28 },
-                            { name: "Direct", value: 15 },
-                            { name: "Email", value: 12 },
-                          ]}
-                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip 
-                            contentStyle={{ 
-                              backgroundColor: "white", 
-                              borderRadius: "8px", 
-                              boxShadow: "0 4px 12px rgba(0,0,0,0.1)", 
-                              border: "none" 
-                            }}
-                          />
-                          <Bar dataKey="value" fill="#be2de2" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                    {stats.clicks === 0 ? (
+                      <div className="h-64 flex items-center justify-center text-center">
+                        <p className="text-gray-500">
+                          Aucune donnée disponible pour le moment. 
+                          Partagez votre lien pour commencer à collecter des statistiques.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={[
+                              { name: "Social", value: Math.floor(stats.clicks * 0.45) },
+                              { name: "Blog", value: Math.floor(stats.clicks * 0.28) },
+                              { name: "Direct", value: Math.floor(stats.clicks * 0.15) },
+                              { name: "Email", value: Math.floor(stats.clicks * 0.12) },
+                            ]}
+                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: "white", 
+                                borderRadius: "8px", 
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.1)", 
+                                border: "none" 
+                              }}
+                            />
+                            <Bar dataKey="value" fill="#be2de2" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -228,24 +332,33 @@ const Dashboard = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { action: "Nouveau clic", time: "Il y a 5 minutes", source: "Twitter" },
-                        { action: "Nouvelle conversion", time: "Il y a 28 minutes", source: "Facebook" },
-                        { action: "Nouveau clic", time: "Il y a 42 minutes", source: "Blog" },
-                        { action: "Nouveau clic", time: "Il y a 1 heure", source: "LinkedIn" },
-                      ].map((item, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-medium text-sm">{item.action}</p>
-                            <p className="text-xs text-gray-500">{item.time}</p>
+                    {stats.clicks === 0 ? (
+                      <div className="flex items-center justify-center text-center h-64">
+                        <p className="text-gray-500">
+                          Aucune activité récente.
+                          Revenez ici après avoir partagé votre lien.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {[
+                          { action: "Nouveau clic", time: "Il y a 5 minutes", source: "Twitter" },
+                          { action: "Nouvelle conversion", time: "Il y a 28 minutes", source: "Facebook" },
+                          { action: "Nouveau clic", time: "Il y a 42 minutes", source: "Blog" },
+                          { action: "Nouveau clic", time: "Il y a 1 heure", source: "LinkedIn" },
+                        ].map((item, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                              <p className="font-medium text-sm">{item.action}</p>
+                              <p className="text-xs text-gray-500">{item.time}</p>
+                            </div>
+                            <span className="text-xs font-medium px-2 py-1 bg-purple-100 text-brand-purple rounded-full">
+                              {item.source}
+                            </span>
                           </div>
-                          <span className="text-xs font-medium px-2 py-1 bg-purple-100 text-brand-purple rounded-full">
-                            {item.source}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -260,58 +373,84 @@ const Dashboard = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            ID
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Produit
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Montant
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Statut
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {latestConversions.map((conversion) => (
-                          <tr key={conversion.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              #{conversion.id}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              {conversion.product}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {conversion.date}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              {conversion.amount}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  conversion.status === "Validé"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-yellow-100 text-yellow-800"
-                                }`}
-                              >
-                                {conversion.status}
-                              </span>
-                            </td>
+                  {conversions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="bg-purple-50 inline-block p-3 rounded-full mb-4">
+                        <TrendingUp className="h-6 w-6 text-brand-purple" />
+                      </div>
+                      <h3 className="text-xl font-semibold mb-2">Pas encore de conversions</h3>
+                      <p className="text-gray-500 max-w-md mx-auto mb-6">
+                        Vous n'avez pas encore généré de conversions. Partagez votre lien d'affiliation 
+                        pour commencer à gagner des commissions.
+                      </p>
+                      <Button 
+                        onClick={handleCopyLink} 
+                        className="bg-brand-purple hover:bg-purple-700"
+                      >
+                        <Copy className="w-4 h-4 mr-2" />
+                        Copier mon lien d'affiliation
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              ID
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Produit
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Date
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Montant
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Statut
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {conversions.map((conversion) => (
+                            <tr key={conversion.id}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                #{conversion.id.substring(0, 8)}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                {conversion.product}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {new Date(conversion.created_at).toLocaleDateString('fr-FR', {
+                                  year: 'numeric', 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                {parseFloat(conversion.amount).toFixed(2)} €
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                    conversion.status === "completed"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-yellow-100 text-yellow-800"
+                                  }`}
+                                >
+                                  {conversion.status === "completed" ? "Validé" : "En attente"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -334,40 +473,50 @@ const Dashboard = () => {
                   <div className="grid gap-6 md:grid-cols-3 mb-8">
                     <div className="bg-purple-50 rounded-xl p-6">
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Montant disponible</h3>
-                      <p className="text-3xl font-bold text-brand-purple">468,90 €</p>
+                      <p className="text-3xl font-bold text-brand-purple">
+                        {stats.revenue.toFixed(2)} €
+                      </p>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-6">
                       <h3 className="text-sm font-medium text-gray-500 mb-1">En attente</h3>
-                      <p className="text-3xl font-bold">299,00 €</p>
+                      <p className="text-3xl font-bold">0,00 €</p>
                     </div>
                     <div className="bg-gray-50 rounded-xl p-6">
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Total reçu</h3>
-                      <p className="text-3xl font-bold">1 254,00 €</p>
+                      <p className="text-3xl font-bold">0,00 €</p>
                     </div>
                   </div>
 
                   <h3 className="font-medium mb-4">Historique des paiements</h3>
-                  <div className="space-y-4">
-                    {[
-                      { date: "15 Oct 2023", amount: "350,00 €", method: "PayPal", status: "Complété" },
-                      { date: "15 Sep 2023", amount: "228,00 €", method: "PayPal", status: "Complété" },
-                      { date: "15 Août 2023", amount: "176,00 €", method: "PayPal", status: "Complété" },
-                      { date: "15 Juil 2023", amount: "500,00 €", method: "PayPal", status: "Complété" },
-                    ].map((payment, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg">
-                        <div>
-                          <p className="font-medium">{payment.date}</p>
-                          <p className="text-sm text-gray-500">Via {payment.method}</p>
+                  {stats.revenue === 0 ? (
+                    <div className="text-center py-12 bg-gray-50 rounded-lg">
+                      <p className="text-gray-500">
+                        Vous n'avez pas encore reçu de paiements. Les paiements seront
+                        affichés ici une fois traités.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Sample payment history will be replaced with real data */}
+                      {[
+                        { date: "15 Oct 2023", amount: "350,00 €", method: "PayPal", status: "Complété" },
+                        { date: "15 Sep 2023", amount: "228,00 €", method: "PayPal", status: "Complété" },
+                      ].map((payment, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 border border-gray-100 rounded-lg">
+                          <div>
+                            <p className="font-medium">{payment.date}</p>
+                            <p className="text-sm text-gray-500">Via {payment.method}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold">{payment.amount}</p>
+                            <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                              {payment.status}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-bold">{payment.amount}</p>
-                          <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                            {payment.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

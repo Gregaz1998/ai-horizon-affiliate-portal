@@ -13,6 +13,17 @@ interface StatCardProps {
   delay: number;
 }
 
+interface Stats {
+  clicks: number;
+  conversions: number;
+  conversionRate: number;
+  revenue: number;
+}
+
+interface AffiliateStatsProps {
+  stats: Stats;
+}
+
 const StatCard = ({ title, value, icon, trend, delay }: StatCardProps) => {
   return (
     <motion.div
@@ -22,7 +33,7 @@ const StatCard = ({ title, value, icon, trend, delay }: StatCardProps) => {
       className="bg-white rounded-xl p-6 shadow-sm flex flex-col h-full card-hover"
     >
       <div className="flex justify-between items-start mb-4">
-        <div className="p-3 rounded-lg bg-blue-50">{icon}</div>
+        <div className="p-3 rounded-lg bg-purple-50">{icon}</div>
         {trend && (
           <div
             className={`flex items-center text-sm font-medium ${
@@ -46,49 +57,45 @@ const StatCard = ({ title, value, icon, trend, delay }: StatCardProps) => {
   );
 };
 
-const AffiliateStats = () => {
-  const stats = [
+const AffiliateStats = ({ stats }: AffiliateStatsProps) => {
+  const formattedStats = [
     {
       title: "Total des clics",
-      value: "1,248",
-      icon: <MousePointer className="w-5 h-5 text-brand-blue" />,
-      trend: {
-        value: "+12.5%",
-        isPositive: true,
-      },
+      value: stats.clicks.toString(),
+      icon: <MousePointer className="w-5 h-5 text-brand-purple" />,
+      trend: stats.clicks > 0 
+        ? { value: "+12.5%", isPositive: true }
+        : undefined,
     },
     {
       title: "Conversions",
-      value: "86",
-      icon: <Users className="w-5 h-5 text-brand-blue" />,
-      trend: {
-        value: "+8.2%",
-        isPositive: true,
-      },
+      value: stats.conversions.toString(),
+      icon: <Users className="w-5 h-5 text-brand-purple" />,
+      trend: stats.conversions > 0 
+        ? { value: "+8.2%", isPositive: true }
+        : undefined,
     },
     {
       title: "Taux de conversion",
-      value: "6.89%",
-      icon: <TrendingUp className="w-5 h-5 text-brand-blue" />,
-      trend: {
-        value: "-1.5%",
-        isPositive: false,
-      },
+      value: `${stats.conversionRate}%`,
+      icon: <TrendingUp className="w-5 h-5 text-brand-purple" />,
+      trend: stats.conversions > 0 
+        ? { value: "-1.5%", isPositive: false }
+        : undefined,
     },
     {
       title: "Revenus générés",
-      value: "1,286€",
-      icon: <DollarSign className="w-5 h-5 text-brand-blue" />,
-      trend: {
-        value: "+18.3%",
-        isPositive: true,
-      },
+      value: `${stats.revenue.toFixed(2)}€`,
+      icon: <DollarSign className="w-5 h-5 text-brand-purple" />,
+      trend: stats.revenue > 0 
+        ? { value: "+18.3%", isPositive: true }
+        : undefined,
     },
   ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      {stats.map((stat, index) => (
+      {formattedStats.map((stat, index) => (
         <StatCard
           key={index}
           title={stat.title}

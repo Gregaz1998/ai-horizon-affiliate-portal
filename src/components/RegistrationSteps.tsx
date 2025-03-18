@@ -11,13 +11,16 @@ import {
   CreditCard, 
   FileText, 
   Link, 
-  LayoutDashboard 
+  LayoutDashboard,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/context/AuthContext";
+import { AffiliateService } from "@/services/AffiliateService";
 
 const steps = [
   {
@@ -70,8 +73,10 @@ const RegistrationSteps = () => {
     niche: "technology",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { signUp } = useAuth();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -135,12 +140,49 @@ const RegistrationSteps = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const nextStep = () => {
+  const handleSignUp = async () => {
+    setIsLoading(true);
+    try {
+      const { error } = await signUp(formData.email, formData.password, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        paymentMethod: formData.paymentMethod,
+        paymentDetails: formData.paymentMethod === "paypal" 
+          ? { paypalEmail: formData.paypalEmail }
+          : { bankName: formData.bankName, accountNumber: formData.accountNumber },
+        niche: formData.niche
+      });
+      
+      if (error) {
+        toast({
+          title: "Erreur d'inscription",
+          description: error.message,
+          variant: "destructive",
+        });
+        setCurrentStep(1); // Return to first step
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Signup error:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite lors de l'inscription",
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const nextStep = async () => {
     if (validateStep()) {
       if (currentStep < steps.length) {
         setCurrentStep(currentStep + 1);
       } else {
-        // Handle form submission
+        // Final step - redirect to dashboard
         toast({
           title: "Inscription réussie !",
           description: "Vous allez être redirigé vers votre tableau de bord.",
@@ -161,7 +203,7 @@ const RegistrationSteps = () => {
   const generateAffiliateLink = () => {
     const username = `${formData.firstName.toLowerCase()}${formData.lastName.toLowerCase()}`;
     const randomString = Math.random().toString(36).substring(2, 8);
-    return `aihorizon.com/ref/${username}-${randomString}`;
+    return `${username}-${randomString}`;
   };
 
   // Update affiliate link when step 4 is reached
@@ -458,19 +500,19 @@ const RegistrationSteps = () => {
                 <p className="text-gray-600">
                   Votre lien d'affiliation unique a été généré !
                 </p>
-                <div className="text-brand-blue font-semibold text-lg">
-                  {formData.affiliateLink}
+                <div className="text-brand-purple font-semibold text-lg">
+                  aihorizon.com/ref/{formData.affiliateLink}
                 </div>
               </div>
               
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="text-gray-800 font-medium truncate">
-                  {formData.affiliateLink}
+                  aihorizon.com/ref/{formData.affiliateLink}
                 </div>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    navigator.clipboard.writeText(formData.affiliateLink);
+                    navigator.clipboard.writeText(`aihorizon.com/ref/${formData.affiliateLink}`);
                     toast({
                       description: "Lien copié dans le presse-papiers !",
                     });
@@ -527,12 +569,22 @@ const RegistrationSteps = () => {
               </p>
               
               <Button 
-                className="bg-brand-blue hover:bg-blue-600 text-white btn-hover-effect"
+                className="bg-brand-purple hover:bg-purple-700 text-white btn-hover-effect"
                 size="lg"
                 onClick={nextStep}
+                disabled={isLoading}
               >
-                Accéder au tableau de bord
-                <ChevronRight className="ml-2 h-5 w-5" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Traitement en cours...
+                  </>
+                ) : (
+                  <>
+                    Accéder au tableau de bord
+                    <ChevronRight className="ml-2 h-5 w-5" />
+                  </>
+                )}
               </Button>
             </div>
           </motion.div>
@@ -623,7 +675,7 @@ const RegistrationSteps = () => {
         <Button
           variant="outline"
           onClick={prevStep}
-          disabled={currentStep === 1}
+          disabled={currentStep === 1 || isLoading}
           className={currentStep === 1 ? "opacity-0" : ""}
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
@@ -631,11 +683,21 @@ const RegistrationSteps = () => {
         </Button>
         
         <Button 
-          onClick={nextStep}
+          onClick={currentStep === 5 ? handleSignUp : nextStep}
           className="bg-brand-purple hover:bg-purple-700 text-white btn-hover-effect"
+          disabled={isLoading}
         >
-          {currentStep === steps.length ? "Terminer" : "Suivant"}
-          {currentStep !== steps.length && <ChevronRight className="ml-2 h-4 w-4" />}
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Traitement...
+            </>
+          ) : (
+            <>
+              {currentStep === steps.length ? "Terminer" : "Suivant"}
+              {currentStep !== steps.length && <ChevronRight className="ml-2 h-4 w-4" />}
+            </>
+          )}
         </Button>
       </div>
     </div>
