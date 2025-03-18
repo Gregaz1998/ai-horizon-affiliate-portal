@@ -557,9 +557,9 @@ const RegistrationSteps = () => {
                       <span
                         className={`relative z-10 flex h-12 w-12 items-center justify-center rounded-full ${
                           step.id < currentStep
-                            ? "bg-brand-blue"
+                            ? "bg-brand-purple"
                             : step.id === currentStep
-                            ? "bg-blue-100 border-2 border-brand-blue"
+                            ? "bg-purple-100 border-2 border-brand-purple"
                             : "bg-gray-100"
                         }`}
                       >
@@ -568,7 +568,7 @@ const RegistrationSteps = () => {
                         ) : (
                           <span
                             className={`text-sm font-medium ${
-                              step.id === currentStep ? "text-brand-blue" : "text-gray-500"
+                              step.id === currentStep ? "text-brand-purple" : "text-gray-500"
                             }`}
                           >
                             <step.icon className="h-6 w-6" />
@@ -579,7 +579,7 @@ const RegistrationSteps = () => {
                     {index < steps.length - 1 && (
                       <div
                         className={`flex-1 h-0.5 ${
-                          step.id < currentStep ? "bg-brand-blue" : "bg-gray-200"
+                          step.id < currentStep ? "bg-brand-purple" : "bg-gray-200"
                         }`}
                       ></div>
                     )}
@@ -602,7 +602,7 @@ const RegistrationSteps = () => {
           <div className="flex items-center space-x-2">
             <div className="bg-gray-200 h-2 flex-1 rounded-full overflow-hidden">
               <div
-                className="bg-brand-blue h-full rounded-full"
+                className="bg-brand-purple h-full rounded-full"
                 style={{ width: `${(currentStep / steps.length) * 100}%` }}
               ></div>
             </div>
@@ -632,7 +632,7 @@ const RegistrationSteps = () => {
         
         <Button 
           onClick={nextStep}
-          className="bg-brand-blue hover:bg-blue-600 text-white btn-hover-effect"
+          className="bg-brand-purple hover:bg-purple-700 text-white btn-hover-effect"
         >
           {currentStep === steps.length ? "Terminer" : "Suivant"}
           {currentStep !== steps.length && <ChevronRight className="ml-2 h-4 w-4" />}

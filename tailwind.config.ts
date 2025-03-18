@@ -75,7 +75,8 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				brand: {
-					blue: '#0066FF',
+					purple: '#be2de2', // Nouvelle couleur principale
+					blue: '#0066FF',   // Ancienne couleur conservée pour référence
 					dark: '#111111',
 					light: '#FFFFFF',
 				}
