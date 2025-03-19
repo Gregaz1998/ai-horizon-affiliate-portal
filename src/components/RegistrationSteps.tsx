@@ -312,7 +312,7 @@ const RegistrationSteps = () => {
   const handleSignUp = async () => {
     setIsLoading(true);
     try {
-      const { error } = await signUp(formData.email, formData.password, {
+      const { error, user } = await signUp(formData.email, formData.password, {
         firstName: formData.firstName,
         lastName: formData.lastName,
         paymentMethod: formData.paymentMethod,
@@ -335,7 +335,29 @@ const RegistrationSteps = () => {
         return false;
       }
       
+      if (user && user.id) {
+        const { error: linkError } = await AffiliateService.createAffiliateLink(
+          user.id, 
+          formData.affiliateLink
+        );
+        
+        if (linkError) {
+          console.error("Error creating affiliate link:", linkError);
+          toast({
+            title: "Erreur",
+            description: "Votre compte a été créé mais nous n'avons pas pu générer votre lien d'affiliation. Veuillez contacter le support.",
+            variant: "destructive",
+          });
+        }
+      }
+      
       AffiliateService.clearRegistrationData();
+      
+      toast({
+        title: "Inscription réussie !",
+        description: "Vous êtes redirigé vers votre tableau de bord.",
+      });
+      
       return true;
     } catch (error) {
       console.error("Signup error:", error);
@@ -354,14 +376,8 @@ const RegistrationSteps = () => {
     if (validateStep()) {
       if (currentStep < steps.length) {
         setCurrentStep(currentStep + 1);
-      } else {
-        toast({
-          title: "Inscription réussie !",
-          description: "Vous allez être redirigé vers votre tableau de bord.",
-        });
-        setTimeout(() => {
-          navigate("/dashboard");
-        }, 2000);
+      } else if (currentStep === steps.length) {
+        await handleSignUp();
       }
     }
   };

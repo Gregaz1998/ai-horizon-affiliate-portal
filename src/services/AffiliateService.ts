@@ -200,7 +200,7 @@ export class AffiliateService {
   }
 
   // Set up realtime listeners for clicks and conversions
-  static setupRealtimeListeners(affiliateLinkId: string, onUpdate: () => void): void {
+  static setupRealtimeListeners(affiliateLinkId: string, onUpdate: () => void): RealtimeChannel {
     // Clean up any existing channel
     if (this.realtimeChannel) {
       this.realtimeChannel.unsubscribe();
@@ -227,6 +227,8 @@ export class AffiliateService {
         onUpdate();
       })
       .subscribe();
+
+    return this.realtimeChannel;
   }
 
   // Save registration form data to local storage
