@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import Layout from "@/components/Layout";
 import AffiliateStats from "@/components/AffiliateStats";
 import { useAuth } from "@/context/AuthContext";
-import { AffiliateService } from "@/services/AffiliateService";
+import { AffiliateService, AffiliateLink, AffiliateStats as AffiliateStatsType } from "@/services/AffiliateService";
 import { supabase } from "@/integrations/supabase/client";
 
 // Sample data for when we don't have real data yet
@@ -33,7 +33,7 @@ const Dashboard = () => {
   const [timeRange, setTimeRange] = useState("yearly");
   const [affiliateLink, setAffiliateLink] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({ clicks: 0, conversions: 0, conversionRate: 0, revenue: 0 });
+  const [stats, setStats] = useState<AffiliateStatsType>({ clicks: 0, conversions: 0, revenue: 0 });
   const [conversions, setConversions] = useState([]);
   const [performanceData, setPerformanceData] = useState(samplePerformanceData);
   const { toast } = useToast();
@@ -48,33 +48,28 @@ const Dashboard = () => {
     async function loadData() {
       setIsLoading(true);
       try {
-        // Get or create affiliate link
-        const code = await AffiliateService.getAffiliateLink(user.id);
-        if (code) {
-          setAffiliateLink(code);
+        // Get affiliate link
+        const { data: linkData, error: linkError } = await AffiliateService.getAffiliateLink(user.id);
+        if (linkError) throw linkError;
+        
+        if (linkData) {
+          setAffiliateLink(linkData.code);
         }
         
         // Get stats
-        const userStats = await AffiliateService.getStats(user.id);
-        setStats(userStats);
+        const { data: statsData, error: statsError } = await AffiliateService.getAffiliateStats(user.id);
+        if (statsError) throw statsError;
+        
+        if (statsData) {
+          setStats(statsData);
+        }
         
         // Get conversions
-        const { data: linksData } = await supabase
-          .from('affiliate_links')
-          .select('id')
-          .eq('user_id', user.id);
-          
-        if (linksData && linksData.length > 0) {
-          const linkIds = linksData.map(link => link.id);
-          
-          const { data } = await supabase
-            .from('conversions')
-            .select('*')
-            .in('affiliate_link_id', linkIds)
-            .order('created_at', { ascending: false })
-            .limit(10);
-            
-          setConversions(data || []);
+        const { data: conversionsData, error: conversionsError } = await AffiliateService.getConversions(user.id);
+        if (conversionsError) throw conversionsError;
+        
+        if (conversionsData) {
+          setConversions(conversionsData);
         }
       } catch (error) {
         console.error("Error loading dashboard data:", error);
@@ -91,14 +86,28 @@ const Dashboard = () => {
     loadData();
     
     // Set up realtime listeners for stats updates
-    const channel = AffiliateService.setupRealtimeListeners(user.id, () => {
-      // Refresh stats when new activity occurs
-      AffiliateService.getStats(user.id).then(newStats => setStats(newStats));
-    });
+    let channel;
+    
+    async function setupRealtimeListener() {
+      const { data: linkData } = await AffiliateService.getAffiliateLink(user.id);
+      if (linkData) {
+        channel = AffiliateService.setupRealtimeListeners(linkData.id, async () => {
+          // Refresh stats when new activity occurs
+          const { data: newStats } = await AffiliateService.getAffiliateStats(user.id);
+          if (newStats) {
+            setStats(newStats);
+          }
+        });
+      }
+    }
+    
+    setupRealtimeListener();
     
     return () => {
       // Clean up listener
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [user, toast]);
 

@@ -93,12 +93,12 @@ export class AffiliateService {
 
       if (conversionsError) throw conversionsError;
 
-      const revenue = conversions.reduce((sum, conversion) => sum + conversion.amount, 0);
+      const revenue = conversions ? conversions.reduce((sum, conversion) => sum + conversion.amount, 0) : 0;
 
       return { 
         data: { 
           clicks: clicks || 0, 
-          conversions: conversions.length, 
+          conversions: conversions ? conversions.length : 0, 
           revenue 
         }, 
         error: null 
