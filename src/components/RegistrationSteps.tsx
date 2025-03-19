@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,8 @@ import {
   Link, 
   LayoutDashboard,
   Loader2,
-  Building2
+  Building2,
+  MapPin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/context/AuthContext";
 import { AffiliateService } from "@/services/AffiliateService";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 
 const steps = [
   {
@@ -56,6 +64,66 @@ const steps = [
   },
 ];
 
+// Services offered
+const serviceOptions = [
+  { value: "branding", label: "Branding et image de marque" },
+  { value: "ai", label: "AUTOMATISATION IA" },
+  { value: "video", label: "Tournage et Montage vidéos" },
+  { value: "photo", label: "Séance photo professionnelle" },
+  { value: "seo", label: "SEO/SEA (Référencement)" },
+  { value: "web", label: "Création de Sites Web" },
+  { value: "content", label: "Création de Contenu Digital" }
+];
+
+// Country and region options
+const countries = {
+  "belgique": {
+    label: "Belgique",
+    regions: [
+      "Bruxelles",
+      "Anvers",
+      "Liège",
+      "Gand",
+      "Charleroi",
+      "Bruges",
+      "Namur",
+      "Louvain",
+      "Mons",
+      "Wavre"
+    ]
+  },
+  "france": {
+    label: "France",
+    regions: [
+      "Paris",
+      "Marseille",
+      "Lyon",
+      "Toulouse",
+      "Nice",
+      "Nantes",
+      "Strasbourg",
+      "Montpellier",
+      "Bordeaux",
+      "Lille"
+    ]
+  },
+  "luxembourg": {
+    label: "Luxembourg",
+    regions: [
+      "Luxembourg-Ville",
+      "Esch-sur-Alzette",
+      "Differdange",
+      "Dudelange",
+      "Ettelbruck",
+      "Diekirch",
+      "Wiltz",
+      "Echternach",
+      "Rumelange",
+      "Vianden"
+    ]
+  }
+};
+
 const RegistrationSteps = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -73,7 +141,9 @@ const RegistrationSteps = () => {
     acceptPrivacy: false,
     hasBusinessNumber: true,
     affiliateLink: "",
-    niche: "technology",
+    service: "branding",
+    country: "belgique",
+    region: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -81,12 +151,66 @@ const RegistrationSteps = () => {
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
+  // Load saved form data on component mount
+  useEffect(() => {
+    const savedData = AffiliateService.loadRegistrationData();
+    if (savedData) {
+      setFormData(prev => ({
+        ...prev,
+        ...savedData
+      }));
+      
+      // If we have saved data, show a toast to let the user know
+      toast({
+        description: "Vos données ont été restaurées automatiquement.",
+      });
+    }
+  }, [toast]);
+
+  // Auto-save form data when it changes
+  useEffect(() => {
+    const saveTimeout = setTimeout(() => {
+      AffiliateService.saveRegistrationData(formData);
+    }, 1000);
+
+    return () => clearTimeout(saveTimeout);
+  }, [formData]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value,
     });
+    
+    // Clear error when field is edited
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: "",
+      });
+    }
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+    
+    // If country changes, reset region
+    if (name === "country") {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        region: ""
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
     
     // Clear error when field is edited
     if (errors[name]) {
@@ -155,6 +279,16 @@ const RegistrationSteps = () => {
       if (!formData.acceptPrivacy) {
         newErrors.acceptPrivacy = "Vous devez accepter la politique de confidentialité";
       }
+    } else if (currentStep === 4) {
+      if (!formData.country) {
+        newErrors.country = "Veuillez sélectionner un pays";
+      }
+      if (!formData.region) {
+        newErrors.region = "Veuillez sélectionner une région";
+      }
+      if (!formData.service) {
+        newErrors.service = "Veuillez sélectionner un service";
+      }
     }
     
     setErrors(newErrors);
@@ -172,7 +306,9 @@ const RegistrationSteps = () => {
           ? { paypalEmail: formData.paypalEmail }
           : { bankName: formData.bankName, accountNumber: formData.accountNumber },
         businessNumber: formData.businessNumber,
-        niche: formData.niche
+        service: formData.service,
+        country: formData.country,
+        region: formData.region
       });
       
       if (error) {
@@ -185,6 +321,8 @@ const RegistrationSteps = () => {
         return false;
       }
       
+      // Clear saved registration data on successful signup
+      AffiliateService.clearRegistrationData();
       return true;
     } catch (error) {
       console.error("Signup error:", error);
@@ -619,20 +757,76 @@ const RegistrationSteps = () => {
                 </Button>
               </div>
               
-              <div className="pt-4 border-t">
-                <h3 className="font-medium text-gray-800 mb-2">Spécifiez votre niche principale :</h3>
-                <select
-                  name="niche"
-                  value={formData.niche}
-                  onChange={(e) => setFormData({ ...formData, niche: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                >
-                  <option value="technology">Technologie & IA</option>
-                  <option value="business">Business & Entrepreneuriat</option>
-                  <option value="education">Éducation & Formation</option>
-                  <option value="marketing">Marketing & Vente</option>
-                  <option value="lifestyle">Lifestyle & Développement personnel</option>
-                </select>
+              <div className="pt-4 border-t space-y-6">
+                <div>
+                  <h3 className="font-medium text-gray-800 mb-3">Niche dans laquelle vous souhaitez prospecter :</h3>
+                  <Select 
+                    value={formData.service} 
+                    onValueChange={(value) => handleSelectChange("service", value)}
+                  >
+                    <SelectTrigger className={errors.service ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Sélectionnez un service" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {serviceOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.service && (
+                    <p className="text-red-500 text-sm mt-1">{errors.service}</p>
+                  )}
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium text-gray-800 mb-3">Pays où vous souhaitez prospecter :</h3>
+                    <Select 
+                      value={formData.country} 
+                      onValueChange={(value) => handleSelectChange("country", value)}
+                    >
+                      <SelectTrigger className={errors.country ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Sélectionnez un pays" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(countries).map(([value, { label }]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.country && (
+                      <p className="text-red-500 text-sm mt-1">{errors.country}</p>
+                    )}
+                  </div>
+                  
+                  {formData.country && (
+                    <div>
+                      <h3 className="font-medium text-gray-800 mb-3">Région où vous souhaitez prospecter :</h3>
+                      <Select 
+                        value={formData.region} 
+                        onValueChange={(value) => handleSelectChange("region", value)}
+                      >
+                        <SelectTrigger className={errors.region ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Sélectionnez une région" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries[formData.country as keyof typeof countries]?.regions.map((region) => (
+                            <SelectItem key={region} value={region}>
+                              {region}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.region && (
+                        <p className="text-red-500 text-sm mt-1">{errors.region}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="text-sm text-gray-600 p-4 bg-blue-50 rounded-lg">

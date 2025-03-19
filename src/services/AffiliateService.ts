@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface AffiliateLink {
   id: string;
@@ -30,6 +31,8 @@ export interface ClickData {
 }
 
 export class AffiliateService {
+  static realtimeChannel: RealtimeChannel | null = null;
+
   static async createAffiliateLink(userId: string, code: string): Promise<{ data: AffiliateLink | null; error: Error | null }> {
     try {
       const { data, error } = await supabase
@@ -194,5 +197,51 @@ export class AffiliateService {
       console.error("Error simulating conversion:", error);
       return { success: false, error: error as Error };
     }
+  }
+
+  // Set up realtime listeners for clicks and conversions
+  static setupRealtimeListeners(affiliateLinkId: string, onUpdate: () => void): void {
+    // Clean up any existing channel
+    if (this.realtimeChannel) {
+      this.realtimeChannel.unsubscribe();
+    }
+
+    this.realtimeChannel = supabase
+      .channel('affiliate-updates')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'clicks',
+        filter: `affiliate_link_id=eq.${affiliateLinkId}`
+      }, () => {
+        console.log('New click detected');
+        onUpdate();
+      })
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'conversions',
+        filter: `affiliate_link_id=eq.${affiliateLinkId}`
+      }, () => {
+        console.log('New conversion detected');
+        onUpdate();
+      })
+      .subscribe();
+  }
+
+  // Save registration form data to local storage
+  static saveRegistrationData(formData: any): void {
+    localStorage.setItem('registrationData', JSON.stringify(formData));
+  }
+
+  // Load registration form data from local storage
+  static loadRegistrationData(): any {
+    const savedData = localStorage.getItem('registrationData');
+    return savedData ? JSON.parse(savedData) : null;
+  }
+
+  // Clear registration data from local storage
+  static clearRegistrationData(): void {
+    localStorage.removeItem('registrationData');
   }
 }
