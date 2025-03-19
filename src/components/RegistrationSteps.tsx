@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +13,8 @@ import {
   LayoutDashboard,
   Loader2,
   Building2,
-  MapPin
+  MapPin,
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,19 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from "@/components/ui/popover";
 
 const steps = [
   {
@@ -64,7 +77,6 @@ const steps = [
   },
 ];
 
-// Services offered
 const serviceOptions = [
   { value: "branding", label: "Branding et image de marque" },
   { value: "ai", label: "AUTOMATISATION IA" },
@@ -75,7 +87,6 @@ const serviceOptions = [
   { value: "content", label: "Création de Contenu Digital" }
 ];
 
-// Country and region options
 const countries = {
   "belgique": {
     label: "Belgique",
@@ -147,11 +158,11 @@ const RegistrationSteps = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [showContactDialog, setShowContactDialog] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signUp } = useAuth();
 
-  // Load saved form data on component mount
   useEffect(() => {
     const savedData = AffiliateService.loadRegistrationData();
     if (savedData) {
@@ -160,14 +171,12 @@ const RegistrationSteps = () => {
         ...savedData
       }));
       
-      // If we have saved data, show a toast to let the user know
       toast({
         description: "Vos données ont été restaurées automatiquement.",
       });
     }
   }, [toast]);
 
-  // Auto-save form data when it changes
   useEffect(() => {
     const saveTimeout = setTimeout(() => {
       AffiliateService.saveRegistrationData(formData);
@@ -183,7 +192,6 @@ const RegistrationSteps = () => {
       [name]: type === "checkbox" ? checked : value,
     });
     
-    // Clear error when field is edited
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -198,7 +206,6 @@ const RegistrationSteps = () => {
       [name]: value,
     });
     
-    // If country changes, reset region
     if (name === "country") {
       setFormData(prev => ({
         ...prev,
@@ -212,7 +219,6 @@ const RegistrationSteps = () => {
       }));
     }
     
-    // Clear error when field is edited
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -234,7 +240,10 @@ const RegistrationSteps = () => {
       hasBusinessNumber: value === "yes",
     });
     
-    // Clear business number error if they're saying they don't have one
+    if (value === "no") {
+      setShowContactDialog(true);
+    }
+    
     if (value === "no" && errors.businessNumber) {
       setErrors({
         ...errors,
@@ -270,6 +279,11 @@ const RegistrationSteps = () => {
         if (!formData.accountNumber) newErrors.accountNumber = "Le numéro de compte est requis";
       }
     } else if (currentStep === 3) {
+      if (!formData.hasBusinessNumber) {
+        setShowContactDialog(true);
+        return false;
+      }
+      
       if (formData.hasBusinessNumber && !formData.businessNumber) {
         newErrors.businessNumber = "Le numéro d'entreprise est requis";
       }
@@ -321,7 +335,6 @@ const RegistrationSteps = () => {
         return false;
       }
       
-      // Clear saved registration data on successful signup
       AffiliateService.clearRegistrationData();
       return true;
     } catch (error) {
@@ -342,7 +355,6 @@ const RegistrationSteps = () => {
       if (currentStep < steps.length) {
         setCurrentStep(currentStep + 1);
       } else {
-        // Final step - redirect to dashboard
         toast({
           title: "Inscription réussie !",
           description: "Vous allez être redirigé vers votre tableau de bord.",
@@ -366,7 +378,6 @@ const RegistrationSteps = () => {
     return `${username}-${randomString}`;
   };
 
-  // Update affiliate link when step 4 is reached
   if (currentStep === 4 && !formData.affiliateLink) {
     const generatedLink = generateAffiliateLink();
     setFormData({
@@ -379,6 +390,11 @@ const RegistrationSteps = () => {
     hidden: { opacity: 0, x: 50 },
     visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
     exit: { opacity: 0, x: -50, transition: { duration: 0.3 } }
+  };
+
+  const handleCloseContactDialog = () => {
+    setShowContactDialog(false);
+    navigate('/');
   };
 
   const renderStepContent = () => {
@@ -651,25 +667,10 @@ const RegistrationSteps = () => {
                 </div>
               ) : (
                 <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800 mb-2">
-                    Vous n'avez pas encore de numéro d'entreprise ? Nous vous recommandons de contacter une coopérative d'activités comme Smart pour en obtenir un rapidement.
+                  <p className="text-sm text-yellow-800 mb-2 flex items-start">
+                    <AlertCircle className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>Un numéro d'entreprise est obligatoire pour continuer. Veuillez nous contacter pour obtenir de l'aide.</span>
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <a 
-                      href="https://smartbe.be/fr/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-sm px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded flex items-center justify-center"
-                    >
-                      Visiter SmartBE
-                    </a>
-                    <a 
-                      href="tel:+32493163742" 
-                      className="text-sm px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded flex items-center justify-center"
-                    >
-                      Contact d'urgence: +32493163742
-                    </a>
-                  </div>
                 </div>
               )}
             </div>
@@ -888,7 +889,6 @@ const RegistrationSteps = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Progress Steps */}
       <div className="mb-8">
         <div className="hidden sm:block">
           <nav aria-label="Progress">
@@ -954,14 +954,12 @@ const RegistrationSteps = () => {
         </div>
       </div>
 
-      {/* Step Content */}
       <div className="bg-white shadow-sm rounded-2xl p-6 md:p-8 mb-8">
         <AnimatePresence mode="wait">
           {renderStepContent()}
         </AnimatePresence>
       </div>
 
-      {/* Navigation Buttons */}
       <div className="flex justify-between">
         <Button
           variant="outline"
@@ -991,6 +989,44 @@ const RegistrationSteps = () => {
           )}
         </Button>
       </div>
+
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+              Numéro d'entreprise requis
+            </DialogTitle>
+            <DialogDescription>
+              Pour participer au programme d'affiliation, vous devez disposer d'un numéro d'entreprise valide.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm">
+              Veuillez nous contacter pour obtenir de l'aide :
+            </p>
+            <div className="grid grid-cols-1 gap-3">
+              <a 
+                href="mailto:info@aihorizon-agency.com" 
+                className="flex items-center justify-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors"
+              >
+                info@aihorizon-agency.com
+              </a>
+              <a 
+                href="tel:+32493163742"
+                className="flex items-center justify-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors"
+              >
+                +32 493 16 37 42
+              </a>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleCloseContactDialog}>
+              Retourner à l'accueil
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
