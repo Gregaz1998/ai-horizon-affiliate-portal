@@ -71,6 +71,12 @@ const steps = [
   },
   {
     id: 5,
+    name: "Vérification",
+    description: "Vérification de l'e-mail",
+    icon: CheckCircle2
+  },
+  {
+    id: 6,
     name: "Finalisation",
     description: "Accès au dashboard",
     icon: LayoutDashboard
@@ -159,9 +165,12 @@ const RegistrationSteps = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
+  const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [verificationCheckInterval, setVerificationCheckInterval] = useState<number | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, checkEmailVerification } = useAuth();
 
   useEffect(() => {
     const savedData = AffiliateService.loadRegistrationData();
@@ -184,6 +193,45 @@ const RegistrationSteps = () => {
 
     return () => clearTimeout(saveTimeout);
   }, [formData]);
+
+  // Effect to periodically check email verification when on step 5
+  useEffect(() => {
+    if (currentStep === 5 && emailConfirmationSent && !isEmailVerified) {
+      // Check immediately
+      checkVerificationStatus();
+      
+      // Set up interval to check every 10 seconds
+      const intervalId = window.setInterval(checkVerificationStatus, 10000);
+      setVerificationCheckInterval(intervalId);
+      
+      return () => {
+        if (intervalId) {
+          clearInterval(intervalId);
+          setVerificationCheckInterval(null);
+        }
+      };
+    } else if (verificationCheckInterval) {
+      clearInterval(verificationCheckInterval);
+      setVerificationCheckInterval(null);
+    }
+  }, [currentStep, emailConfirmationSent, isEmailVerified]);
+
+  const checkVerificationStatus = async () => {
+    const verified = await checkEmailVerification();
+    if (verified) {
+      setIsEmailVerified(true);
+      if (verificationCheckInterval) {
+        clearInterval(verificationCheckInterval);
+        setVerificationCheckInterval(null);
+      }
+      toast({
+        title: "Email vérifié",
+        description: "Votre adresse email a été vérifiée avec succès.",
+      });
+      // Move to the final step
+      setCurrentStep(6);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -312,7 +360,7 @@ const RegistrationSteps = () => {
   const handleSignUp = async () => {
     setIsLoading(true);
     try {
-      const { error, user } = await signUp(formData.email, formData.password, {
+      const { error, user, emailConfirmationSent: confirmationRequired } = await signUp(formData.email, formData.password, {
         firstName: formData.firstName,
         lastName: formData.lastName,
         paymentMethod: formData.paymentMethod,
@@ -333,6 +381,13 @@ const RegistrationSteps = () => {
         });
         setCurrentStep(1); // Return to first step
         return false;
+      }
+      
+      // If email confirmation is required, show the verification step
+      if (confirmationRequired) {
+        setEmailConfirmationSent(true);
+        setCurrentStep(5); // Go to verification step
+        return true;
       }
       
       if (user && user.id) {
@@ -374,16 +429,26 @@ const RegistrationSteps = () => {
 
   const nextStep = async () => {
     if (validateStep()) {
-      if (currentStep < steps.length) {
-        setCurrentStep(currentStep + 1);
-      } else if (currentStep === steps.length) {
-        await handleSignUp();
+      if (currentStep < steps.length - 1) {
+        if (currentStep === 4) {
+          // When moving from step 4 to 5, attempt signup
+          const signupSuccess = await handleSignUp();
+          if (!signupSuccess) return;
+          // If successful, the step will be set to 5 by handleSignUp
+        } else {
+          setCurrentStep(currentStep + 1);
+        }
+      } else if (currentStep === steps.length - 1) {
+        if (isEmailVerified) {
+          // Final step after email verification
+          navigate("/dashboard");
+        }
       }
     }
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
+    if (currentStep > 1 && currentStep !== 5) { // Cannot go back from verification step
       setCurrentStep(currentStep - 1);
     }
   };
@@ -856,6 +921,7 @@ const RegistrationSteps = () => {
         );
       
       case 5:
+        // New step for email verification
         return (
           <motion.div
             key="step5"
@@ -866,185 +932,4 @@ const RegistrationSteps = () => {
             className="space-y-6 text-center"
           >
             <div className="py-8">
-              <div className="mx-auto bg-green-100 w-24 h-24 rounded-full flex items-center justify-center mb-6">
-                <CheckCircle2 className="h-12 w-12 text-green-600" />
-              </div>
-              
-              <h2 className="text-2xl font-bold mb-4">Félicitations !</h2>
-              
-              <p className="text-gray-600 mb-8">
-                Votre compte d'affilié a été créé avec succès. Vous allez maintenant être redirigé vers votre tableau de bord où vous pourrez commencer à suivre vos performances.
-              </p>
-              
-              <Button 
-                className="bg-brand-purple hover:bg-purple-700 text-white btn-hover-effect"
-                size="lg"
-                onClick={nextStep}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Traitement en cours...
-                  </>
-                ) : (
-                  <>
-                    Accéder au tableau de bord
-                    <ChevronRight className="ml-2 h-5 w-5" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </motion.div>
-        );
-      
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <div className="hidden sm:block">
-          <nav aria-label="Progress">
-            <ol className="flex items-center">
-              {steps.map((step, index) => (
-                <li key={step.id} className={`relative ${index === steps.length - 1 ? "flex-1" : "flex-1"}`}>
-                  <div className="group flex items-center">
-                    <span className="flex items-center justify-center">
-                      <span
-                        className={`relative z-10 flex h-12 w-12 items-center justify-center rounded-full ${
-                          step.id < currentStep
-                            ? "bg-brand-purple"
-                            : step.id === currentStep
-                            ? "bg-purple-100 border-2 border-brand-purple"
-                            : "bg-gray-100"
-                        }`}
-                      >
-                        {step.id < currentStep ? (
-                          <CheckCircle2 className="h-6 w-6 text-white" />
-                        ) : (
-                          <span
-                            className={`text-sm font-medium ${
-                              step.id === currentStep ? "text-brand-purple" : "text-gray-500"
-                            }`}
-                          >
-                            <step.icon className="h-6 w-6" />
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                    {index < steps.length - 1 && (
-                      <div
-                        className={`flex-1 h-0.5 ${
-                          step.id < currentStep ? "bg-brand-purple" : "bg-gray-200"
-                        }`}
-                      ></div>
-                    )}
-                  </div>
-                  <div className="mt-2 flex justify-center">
-                    <span className="text-xs font-medium text-gray-600">
-                      {step.name}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </nav>
-        </div>
-        
-        <div className="sm:hidden">
-          <p className="text-sm font-medium mb-1">
-            Étape {currentStep} sur {steps.length}
-          </p>
-          <div className="flex items-center space-x-2">
-            <div className="bg-gray-200 h-2 flex-1 rounded-full overflow-hidden">
-              <div
-                className="bg-brand-purple h-full rounded-full"
-                style={{ width: `${(currentStep / steps.length) * 100}%` }}
-              ></div>
-            </div>
-            <span className="text-sm font-medium">{Math.round((currentStep / steps.length) * 100)}%</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white shadow-sm rounded-2xl p-6 md:p-8 mb-8">
-        <AnimatePresence mode="wait">
-          {renderStepContent()}
-        </AnimatePresence>
-      </div>
-
-      <div className="flex justify-between">
-        <Button
-          variant="outline"
-          onClick={prevStep}
-          disabled={currentStep === 1 || isLoading}
-          className={currentStep === 1 ? "opacity-0" : ""}
-        >
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Précédent
-        </Button>
-        
-        <Button 
-          onClick={currentStep === 5 ? handleSignUp : nextStep}
-          className="bg-brand-purple hover:bg-purple-700 text-white btn-hover-effect"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Traitement...
-            </>
-          ) : (
-            <>
-              {currentStep === steps.length ? "Terminer" : "Suivant"}
-              {currentStep !== steps.length && <ChevronRight className="ml-2 h-4 w-4" />}
-            </>
-          )}
-        </Button>
-      </div>
-
-      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-              Numéro d'entreprise requis
-            </DialogTitle>
-            <DialogDescription>
-              Pour participer au programme d'affiliation, vous devez disposer d'un numéro d'entreprise valide.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm">
-              Veuillez nous contacter pour obtenir de l'aide :
-            </p>
-            <div className="grid grid-cols-1 gap-3">
-              <a 
-                href="mailto:info@aihorizon-agency.com" 
-                className="flex items-center justify-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors"
-              >
-                info@aihorizon-agency.com
-              </a>
-              <a 
-                href="tel:+32493163742"
-                className="flex items-center justify-center px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors"
-              >
-                +32 493 16 37 42
-              </a>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleCloseContactDialog}>
-              Retourner à l'accueil
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-};
-
-export default RegistrationSteps;
+              <div className="mx-auto bg-orange-100 w-24 h-24 rounded-full flex items-center justify-center mb-6">

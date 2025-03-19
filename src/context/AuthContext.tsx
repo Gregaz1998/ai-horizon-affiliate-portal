@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,8 +15,10 @@ type AuthContextType = {
   signUp: (email: string, password: string, userData: any) => Promise<{
     error: Error | null;
     user?: User | null;
+    emailConfirmationSent?: boolean;
   }>;
   signOut: () => Promise<void>;
+  checkEmailVerification: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,12 +86,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             first_name: userData.firstName,
             last_name: userData.lastName,
             payment_method: userData.paymentMethod,
-            payment_details: userData.paymentDetails,
+            payment_details: userData.paymentMethod === "paypal" 
+              ? { paypalEmail: userData.paypalEmail }
+              : { bankName: userData.bankName, accountNumber: userData.accountNumber },
             business_number: userData.businessNumber,
             service: userData.service,
             country: userData.country,
             region: userData.region
           },
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
 
@@ -101,13 +107,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         return { error };
       }
 
-      toast({
-        description: "Inscription réussie ! Vous êtes maintenant connecté.",
-      });
+      // Check if email confirmation is required
+      const emailConfirmationSent = !data?.session;
+
+      if (emailConfirmationSent) {
+        toast({
+          description: "Un e-mail de confirmation a été envoyé. Veuillez vérifier votre boîte de réception.",
+        });
+      } else {
+        toast({
+          description: "Inscription réussie ! Vous êtes maintenant connecté.",
+        });
+      }
       
-      return { error: null, user: data.user };
+      return { error: null, user: data.user, emailConfirmationSent };
     } catch (error) {
       return { error: error as Error };
+    }
+  };
+
+  const checkEmailVerification = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error("Error checking email verification:", error);
+        return false;
+      }
+      
+      // If we have a user and their email is confirmed, they're verified
+      return !!(data.user && data.user.email_confirmed_at);
+    } catch (error) {
+      console.error("Error in checkEmailVerification:", error);
+      return false;
     }
   };
 
@@ -128,6 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         signIn,
         signUp,
         signOut,
+        checkEmailVerification,
       }}
     >
       {children}
