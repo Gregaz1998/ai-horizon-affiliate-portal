@@ -78,6 +78,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const signUp = async (email: string, password: string, userData: any) => {
     try {
+      // Utilisation d'une URL absolue pour la redirection
+      // Important: pas de paramètres de requête complexes qui pourraient être mal encodés
+      const redirectTo = `${window.location.origin}/register`;
+      
+      console.log("Redirect URL:", redirectTo);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -94,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             country: userData.country,
             region: userData.region
           },
-          emailRedirectTo: `${window.location.origin}/register?step=6`,
+          emailRedirectTo: redirectTo,
         },
       });
 

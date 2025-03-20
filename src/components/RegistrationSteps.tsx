@@ -173,6 +173,7 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
   const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [verificationCheckInterval, setVerificationCheckInterval] = useState<number | null>(null);
+  const [manualVerifyDialogOpen, setManualVerifyDialogOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signUp, checkEmailVerification, user } = useAuth();
@@ -200,8 +201,13 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
       });
     }
 
-    if (currentStep === 5 && savedData && savedData.emailConfirmationSent) {
-      setEmailConfirmationSent(true);
+    if (currentStep === 5 && savedData) {
+      if (savedData.emailConfirmationSent) {
+        setEmailConfirmationSent(true);
+      }
+      if (savedData.isEmailVerified) {
+        setIsEmailVerified(true);
+      }
     }
   }, [toast, currentStep]);
 
@@ -209,12 +215,13 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
     const saveTimeout = setTimeout(() => {
       AffiliateService.saveRegistrationData({
         ...formData,
-        emailConfirmationSent
+        emailConfirmationSent,
+        isEmailVerified
       });
     }, 1000);
 
     return () => clearTimeout(saveTimeout);
-  }, [formData, emailConfirmationSent]);
+  }, [formData, emailConfirmationSent, isEmailVerified]);
 
   useEffect(() => {
     if (currentStep === 5 && emailConfirmationSent && !isEmailVerified) {
@@ -236,19 +243,35 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
   }, [currentStep, emailConfirmationSent, isEmailVerified]);
 
   const checkVerificationStatus = async () => {
-    const verified = await checkEmailVerification();
-    if (verified) {
-      setIsEmailVerified(true);
-      if (verificationCheckInterval) {
-        clearInterval(verificationCheckInterval);
-        setVerificationCheckInterval(null);
+    try {
+      const verified = await checkEmailVerification();
+      console.log("Email verification status:", verified);
+      
+      if (verified) {
+        setIsEmailVerified(true);
+        if (verificationCheckInterval) {
+          clearInterval(verificationCheckInterval);
+          setVerificationCheckInterval(null);
+        }
+        toast({
+          title: "Email vérifié",
+          description: "Votre adresse email a été vérifiée avec succès.",
+        });
+        setCurrentStep(6);
       }
-      toast({
-        title: "Email vérifié",
-        description: "Votre adresse email a été vérifiée avec succès.",
-      });
-      setCurrentStep(6);
+    } catch (error) {
+      console.error("Error in checkVerificationStatus:", error);
     }
+  };
+
+  const manuallyVerifyAndContinue = () => {
+    setIsEmailVerified(true);
+    setManualVerifyDialogOpen(false);
+    setCurrentStep(6);
+    toast({
+      title: "Continuation manuelle",
+      description: "Vous avez été avancé à l'étape finale. Merci de confirmer votre email quand vous le recevrez.",
+    });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -982,7 +1005,45 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
               <div className="mt-8 text-sm text-gray-500">
                 <p>Vous n'avez pas reçu d'email ? Vérifiez votre dossier spam ou <button className="text-brand-purple underline" onClick={() => handleSignUp()}>cliquez ici pour renvoyer</button>.</p>
               </div>
+
+              <div className="mt-6">
+                <p className="text-sm text-gray-600 mb-3">
+                  Problème avec le lien de confirmation ?
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setManualVerifyDialogOpen(true)}
+                >
+                  Continuer sans vérification
+                </Button>
+              </div>
             </div>
+
+            <Dialog open={manualVerifyDialogOpen} onOpenChange={setManualVerifyDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Continuer sans vérification d'email</DialogTitle>
+                  <DialogDescription>
+                    Cette option vous permet de continuer l'inscription même si vous rencontrez des difficultés avec la vérification d'email.
+                    Veuillez noter que vous devrez tout de même confirmer votre email plus tard pour accéder à toutes les fonctionnalités.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <p className="text-sm text-gray-500 mb-4">
+                    Recommandations:
+                    <ul className="list-disc pl-5 mt-2 space-y-1">
+                      <li>Vérifiez que votre adresse email est correcte</li>
+                      <li>Consultez votre dossier spam</li>
+                      <li>Essayez un autre navigateur si le lien ne fonctionne pas</li>
+                    </ul>
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setManualVerifyDialogOpen(false)}>Annuler</Button>
+                  <Button onClick={manuallyVerifyAndContinue}>Continuer sans vérification</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </motion.div>
         );
       
@@ -1003,9 +1064,20 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
               
               <h2 className="text-2xl font-bold mb-4">Félicitations !</h2>
               <p className="text-gray-600 mb-8">
-                Votre compte a été créé avec succès et votre email a été vérifié.
+                Votre compte a été créé avec succès{isEmailVerified ? " et votre email a été vérifié" : ""}.
                 <br />Vous êtes prêt à commencer votre expérience d'affiliation.
               </p>
+
+              {!isEmailVerified && (
+                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-6 max-w-md mx-auto text-left">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5 mr-2 flex-shrink-0" />
+                    <p className="text-sm text-yellow-700">
+                      Veuillez confirmer votre email quand vous le recevrez pour activer toutes les fonctionnalités de votre compte.
+                    </p>
+                  </div>
+                </div>
+              )}
               
               <Button
                 size="lg"
