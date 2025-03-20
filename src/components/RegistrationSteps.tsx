@@ -446,9 +446,7 @@ const RegistrationSteps = () => {
   };
 
   const generateAffiliateLink = () => {
-    const username = `${formData.firstName.toLowerCase()}${formData.lastName.toLowerCase()}`;
-    const randomString = Math.random().toString(36).substring(2, 8);
-    return `${username}-${randomString}`;
+    return `https://calendly.com/aihorizon98/30min?affiliate_email=${encodeURIComponent(formData.email)}`;
   };
 
   if (currentStep === 4 && !formData.affiliateLink) {
@@ -807,21 +805,21 @@ const RegistrationSteps = () => {
             <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm space-y-6">
               <div className="text-center space-y-2">
                 <p className="text-gray-600">
-                  Votre lien d'affiliation unique a été généré !
+                  Votre lien d'affiliation Calendly unique a été généré !
                 </p>
-                <div className="text-brand-purple font-semibold text-lg">
-                  aihorizon.com/ref/{formData.affiliateLink}
+                <div className="text-brand-purple font-semibold text-lg break-all">
+                  {formData.affiliateLink}
                 </div>
               </div>
               
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="text-gray-800 font-medium truncate">
-                  aihorizon.com/ref/{formData.affiliateLink}
+                <div className="text-gray-800 font-medium truncate max-w-[70%]">
+                  {formData.affiliateLink}
                 </div>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    navigator.clipboard.writeText(`aihorizon.com/ref/${formData.affiliateLink}`);
+                    navigator.clipboard.writeText(formData.affiliateLink);
                     toast({
                       description: "Lien copié dans le presse-papiers !",
                     });
@@ -905,7 +903,7 @@ const RegistrationSteps = () => {
               
               <div className="text-sm text-gray-600 p-4 bg-blue-50 rounded-lg">
                 <p>
-                  <strong>Conseil :</strong> Partagez votre lien sur vos réseaux sociaux, votre blog, ou votre site web pour commencer à générer des revenus. Vous pouvez suivre vos performances dans votre tableau de bord.
+                  <strong>Conseil:</strong> Partagez votre lien Calendly d'affiliation sur vos réseaux sociaux, votre blog, ou votre site web pour que vos prospects puissent prendre rendez-vous. Vous pouvez suivre vos performances dans votre tableau de bord.
                 </p>
               </div>
             </div>
