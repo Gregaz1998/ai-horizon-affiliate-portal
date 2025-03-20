@@ -1,5 +1,7 @@
 
 import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import Layout from "@/components/Layout";
 import RegistrationSteps from "@/components/RegistrationSteps";
 import { useAuth } from "@/context/AuthContext";
@@ -7,11 +9,15 @@ import { Navigate } from "react-router-dom";
 
 const Register = () => {
   const { user } = useAuth();
-
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   // If user is already logged in, redirect to dashboard
   if (user) {
     return <Navigate to="/dashboard" replace />;
   }
+
+  // Get the current step from URL params or default to step 1
+  const currentStep = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;
 
   return (
     <Layout>
@@ -34,7 +40,7 @@ const Register = () => {
             </p>
           </motion.div>
 
-          <RegistrationSteps />
+          <RegistrationSteps initialStep={currentStep} />
         </div>
       </section>
     </Layout>

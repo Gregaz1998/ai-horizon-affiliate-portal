@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -141,8 +141,13 @@ const countries = {
   }
 };
 
-const RegistrationSteps = () => {
-  const [currentStep, setCurrentStep] = useState(1);
+interface RegistrationStepsProps {
+  initialStep?: number;
+}
+
+const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [currentStep, setCurrentStep] = useState(initialStep);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -170,7 +175,17 @@ const RegistrationSteps = () => {
   const [verificationCheckInterval, setVerificationCheckInterval] = useState<number | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signUp, checkEmailVerification } = useAuth();
+  const { signUp, checkEmailVerification, user } = useAuth();
+
+  useEffect(() => {
+    setSearchParams({ step: currentStep.toString() });
+  }, [currentStep, setSearchParams]);
+
+  useEffect(() => {
+    if (user && currentStep === 5) {
+      checkVerificationStatus();
+    }
+  }, [user, currentStep]);
 
   useEffect(() => {
     const savedData = AffiliateService.loadRegistrationData();
@@ -184,15 +199,22 @@ const RegistrationSteps = () => {
         description: "Vos données ont été restaurées automatiquement.",
       });
     }
-  }, [toast]);
+
+    if (currentStep === 5 && savedData && savedData.emailConfirmationSent) {
+      setEmailConfirmationSent(true);
+    }
+  }, [toast, currentStep]);
 
   useEffect(() => {
     const saveTimeout = setTimeout(() => {
-      AffiliateService.saveRegistrationData(formData);
+      AffiliateService.saveRegistrationData({
+        ...formData,
+        emailConfirmationSent
+      });
     }, 1000);
 
     return () => clearTimeout(saveTimeout);
-  }, [formData]);
+  }, [formData, emailConfirmationSent]);
 
   useEffect(() => {
     if (currentStep === 5 && emailConfirmationSent && !isEmailVerified) {
@@ -386,9 +408,11 @@ const RegistrationSteps = () => {
       }
       
       if (user && user.id) {
+        const calendlyAffiliateLink = `https://calendly.com/aihorizon98/30min?affiliate_email=${encodeURIComponent(formData.email)}`;
+        
         const { error: linkError } = await AffiliateService.createAffiliateLink(
           user.id, 
-          formData.affiliateLink
+          calendlyAffiliateLink
         );
         
         if (linkError) {
