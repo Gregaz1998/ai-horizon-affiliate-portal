@@ -194,13 +194,10 @@ const RegistrationSteps = () => {
     return () => clearTimeout(saveTimeout);
   }, [formData]);
 
-  // Effect to periodically check email verification when on step 5
   useEffect(() => {
     if (currentStep === 5 && emailConfirmationSent && !isEmailVerified) {
-      // Check immediately
       checkVerificationStatus();
       
-      // Set up interval to check every 10 seconds
       const intervalId = window.setInterval(checkVerificationStatus, 10000);
       setVerificationCheckInterval(intervalId);
       
@@ -228,7 +225,6 @@ const RegistrationSteps = () => {
         title: "Email vérifié",
         description: "Votre adresse email a été vérifiée avec succès.",
       });
-      // Move to the final step
       setCurrentStep(6);
     }
   };
@@ -379,14 +375,13 @@ const RegistrationSteps = () => {
           description: error.message,
           variant: "destructive",
         });
-        setCurrentStep(1); // Return to first step
+        setCurrentStep(1);
         return false;
       }
       
-      // If email confirmation is required, show the verification step
       if (confirmationRequired) {
         setEmailConfirmationSent(true);
-        setCurrentStep(5); // Go to verification step
+        setCurrentStep(5);
         return true;
       }
       
@@ -431,16 +426,13 @@ const RegistrationSteps = () => {
     if (validateStep()) {
       if (currentStep < steps.length - 1) {
         if (currentStep === 4) {
-          // When moving from step 4 to 5, attempt signup
           const signupSuccess = await handleSignUp();
           if (!signupSuccess) return;
-          // If successful, the step will be set to 5 by handleSignUp
         } else {
           setCurrentStep(currentStep + 1);
         }
       } else if (currentStep === steps.length - 1) {
         if (isEmailVerified) {
-          // Final step after email verification
           navigate("/dashboard");
         }
       }
@@ -448,7 +440,7 @@ const RegistrationSteps = () => {
   };
 
   const prevStep = () => {
-    if (currentStep > 1 && currentStep !== 5) { // Cannot go back from verification step
+    if (currentStep > 1 && currentStep !== 5) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -921,7 +913,6 @@ const RegistrationSteps = () => {
         );
       
       case 5:
-        // New step for email verification
         return (
           <motion.div
             key="step5"
@@ -933,3 +924,214 @@ const RegistrationSteps = () => {
           >
             <div className="py-8">
               <div className="mx-auto bg-orange-100 w-24 h-24 rounded-full flex items-center justify-center mb-6">
+                <CheckCircle2 className="h-12 w-12 text-orange-500" />
+              </div>
+              
+              <h2 className="text-2xl font-bold mb-4">Vérifiez votre email</h2>
+              <p className="text-gray-600 mb-8">
+                Un lien de confirmation a été envoyé à <span className="font-semibold">{formData.email}</span>.
+                <br />Veuillez vérifier votre boîte de réception et cliquer sur le lien pour activer votre compte.
+              </p>
+              
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 inline-block mx-auto text-left">
+                <div className="flex items-start">
+                  <div className="mr-3 mt-1">
+                    {isEmailVerified ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">
+                      {isEmailVerified 
+                        ? "Email vérifié ! Vous allez être redirigé..." 
+                        : "En attente de vérification..."}
+                    </p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      {isEmailVerified
+                        ? "Votre compte est maintenant actif."
+                        : "Nous vérifions automatiquement si vous avez confirmé votre email."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-8 text-sm text-gray-500">
+                <p>Vous n'avez pas reçu d'email ? Vérifiez votre dossier spam ou <button className="text-brand-purple underline" onClick={() => handleSignUp()}>cliquez ici pour renvoyer</button>.</p>
+              </div>
+            </div>
+          </motion.div>
+        );
+      
+      case 6:
+        return (
+          <motion.div
+            key="step6"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={stepVariants}
+            className="space-y-6 text-center"
+          >
+            <div className="py-8">
+              <div className="mx-auto bg-green-100 w-24 h-24 rounded-full flex items-center justify-center mb-6">
+                <CheckCircle2 className="h-12 w-12 text-green-500" />
+              </div>
+              
+              <h2 className="text-2xl font-bold mb-4">Félicitations !</h2>
+              <p className="text-gray-600 mb-8">
+                Votre compte a été créé avec succès et votre email a été vérifié.
+                <br />Vous êtes prêt à commencer votre expérience d'affiliation.
+              </p>
+              
+              <Button
+                size="lg"
+                onClick={() => navigate("/dashboard")}
+                className="mt-4"
+              >
+                Accéder à mon tableau de bord
+              </Button>
+            </div>
+          </motion.div>
+        );
+      
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="mt-16">
+      <div className="mb-8">
+        <div className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="inline-block min-w-full">
+              <div className="mx-auto px-4 sm:px-6 w-full max-w-5xl">
+                <nav aria-label="Progress">
+                  <ol className="flex items-center">
+                    {steps.map((step, index) => {
+                      const isActive = step.id === currentStep;
+                      const isCompleted = step.id < currentStep;
+                      const isDisabled = step.id > currentStep;
+                      
+                      const StepIcon = step.icon;
+                      
+                      return (
+                        <li key={step.id} className={`relative ${index !== steps.length - 1 ? 'flex-1' : ''}`}>
+                          {index !== 0 && (
+                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                              <div className={`h-0.5 w-full ${isDisabled ? 'bg-gray-200' : 'bg-brand-purple'}`} />
+                            </div>
+                          )}
+                          
+                          <div
+                            className={`relative flex items-center justify-center ${isActive ? 'cursor-default' : isCompleted ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                            onClick={() => isCompleted && setCurrentStep(step.id)}
+                          >
+                            <span className="relative flex h-12 w-12 items-center justify-center rounded-full z-10 text-white">
+                              {isActive ? (
+                                <span className="flex h-full w-full items-center justify-center rounded-full bg-brand-purple">
+                                  <StepIcon className="h-6 w-6" />
+                                </span>
+                              ) : isCompleted ? (
+                                <span className="flex h-full w-full items-center justify-center rounded-full bg-green-500">
+                                  <CheckCircle2 className="h-6 w-6" />
+                                </span>
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 text-gray-500">
+                                  <StepIcon className="h-6 w-6" />
+                                </span>
+                              )}
+                            </span>
+                            
+                            <div className="hidden sm:block mt-2 absolute top-14 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                              <span
+                                className={`text-sm font-medium ${
+                                  isDisabled ? 'text-gray-500' : 'text-gray-900'
+                                }`}
+                              >
+                                {step.name}
+                              </span>
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </nav>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Numéro d'entreprise requis</DialogTitle>
+            <DialogDescription>
+              Pour participer au programme d'affiliation, vous devez disposer d'un numéro d'entreprise valide. Sans celui-ci, vous ne pourrez pas continuer l'inscription.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-gray-500">
+              Le numéro d'entreprise est nécessaire pour des raisons fiscales et légales. Si vous n'en avez pas encore, vous pouvez :
+            </p>
+            <ul className="list-disc pl-5 text-sm text-gray-500 space-y-2">
+              <li>Créer une entreprise individuelle</li>
+              <li>Rejoindre une coopérative d'activités</li>
+              <li>Contacter notre support pour obtenir de l'aide</li>
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleCloseContactDialog}>
+              Retour à l'accueil
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <div className="mx-auto px-4 sm:px-6 max-w-4xl mb-16">
+        <div className="bg-white shadow-sm rounded-lg p-8">
+          <AnimatePresence mode="wait">
+            {renderStepContent()}
+          </AnimatePresence>
+          
+          {currentStep !== 5 && (
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={prevStep}
+                disabled={currentStep === 1}
+                className={currentStep === 1 ? "invisible" : ""}
+              >
+                <ChevronLeft className="mr-2 h-4 w-4" /> Précédent
+              </Button>
+              
+              <Button
+                onClick={nextStep}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Chargement...
+                  </>
+                ) : currentStep === steps.length - 1 ? (
+                  "Terminer"
+                ) : (
+                  <>
+                    Suivant <ChevronRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RegistrationSteps;
