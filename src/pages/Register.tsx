@@ -1,7 +1,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import RegistrationSteps from "@/components/RegistrationSteps";
 import { useAuth } from "@/context/AuthContext";
@@ -12,6 +12,7 @@ const Register = () => {
   const { user, checkEmailVerification } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isVerified, setIsVerified] = useState(false);
+  const navigate = useNavigate();
   
   // Effet pour vérifier si l'utilisateur vient de confirmer son email
   useEffect(() => {
@@ -40,10 +41,20 @@ const Register = () => {
     checkAndUpdateVerification();
   }, [user, checkEmailVerification, setSearchParams]);
 
-  // Si user est déjà connecté et qu'il n'est pas en train de terminer son inscription
-  if (user && isVerified && !searchParams.get("step")) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // Si user est connecté et a terminé l'inscription (étape > 6 ou aucune étape spécifiée)
+  // alors rediriger vers le dashboard
+  useEffect(() => {
+    if (user) {
+      const currentStep = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;
+      const savedData = AffiliateService.loadRegistrationData();
+      
+      // Si l'utilisateur est à l'étape finale ou au-delà, ou s'il n'y a pas d'étape spécifiée
+      // et qu'il a terminé l'inscription (a un lien d'affiliation)
+      if ((currentStep > 6 || !searchParams.get("step")) && savedData?.affiliateLink) {
+        navigate("/dashboard");
+      }
+    }
+  }, [user, searchParams, navigate]);
 
   // Get the current step from URL params or default to step 1
   const currentStep = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;

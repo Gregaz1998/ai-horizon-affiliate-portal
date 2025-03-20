@@ -26,9 +26,32 @@ const Dashboard = () => {
         try {
           setLoadingStats(true);
           
-          // Charger le lien d'affiliation
-          const { data: linkData } = await AffiliateService.getAffiliateLink(user.id);
-          setAffiliateLink(linkData);
+          // Vérifier d'abord si nous avons un lien dans le localStorage
+          const regData = AffiliateService.loadRegistrationData();
+          let link = null;
+          
+          // Essayer de charger le lien d'affiliation depuis Supabase
+          const { data: linkData, error } = await AffiliateService.getAffiliateLink(user.id);
+          
+          if (linkData) {
+            // Si nous avons trouvé un lien dans Supabase, utilisons-le
+            link = linkData;
+          } else if (regData?.affiliateLink && !error) {
+            // Si pas de lien dans Supabase mais un lien dans le localStorage, 
+            // créons-le dans Supabase et utilisons-le
+            const { data: newLinkData } = await AffiliateService.createAffiliateLink(
+              user.id, 
+              regData.affiliateLink
+            );
+            
+            if (newLinkData) {
+              // Récupérer le lien nouvellement créé
+              const { data: freshLink } = await AffiliateService.getAffiliateLink(user.id);
+              link = freshLink;
+            }
+          }
+          
+          setAffiliateLink(link);
           
           // Charger les statistiques
           const { data: statsData } = await AffiliateService.getAffiliateStats(user.id);
@@ -79,7 +102,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4 pt-32">
       <h1 className="text-2xl font-bold mb-4">Tableau de bord</h1>
       <p className="mb-6">Bienvenue, {user.email} !</p>
 
@@ -124,7 +147,7 @@ const Dashboard = () => {
 
       {/* Statistiques */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Total Clics</CardTitle>
