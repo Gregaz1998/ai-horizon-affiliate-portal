@@ -44,16 +44,25 @@ const Register = () => {
   // Si user est connecté et a terminé l'inscription (étape > 6 ou aucune étape spécifiée)
   // alors rediriger vers le dashboard
   useEffect(() => {
-    if (user) {
-      const currentStep = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;
-      const savedData = AffiliateService.loadRegistrationData();
-      
-      // Si l'utilisateur est à l'étape finale ou au-delà, ou s'il n'y a pas d'étape spécifiée
-      // et qu'il a terminé l'inscription (a un lien d'affiliation)
-      if ((currentStep > 6 || !searchParams.get("step")) && savedData?.affiliateLink) {
-        navigate("/dashboard");
+    const checkRegistrationStatus = async () => {
+      if (user) {
+        const currentStep = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;
+        const savedData = AffiliateService.loadRegistrationData();
+        
+        // Vérifier si l'utilisateur a déjà un lien d'affiliation
+        const { data: linkData } = await AffiliateService.getAffiliateLink(user.id);
+        
+        // Si l'utilisateur est à l'étape finale ou au-delà, ou s'il n'y a pas d'étape spécifiée
+        // et qu'il a terminé l'inscription (a un lien d'affiliation)
+        if ((currentStep > 6 || !searchParams.get("step"))) {
+          if (linkData || savedData?.affiliateLink) {
+            navigate("/dashboard");
+          }
+        }
       }
-    }
+    };
+    
+    checkRegistrationStatus();
   }, [user, searchParams, navigate]);
 
   // Get the current step from URL params or default to step 1

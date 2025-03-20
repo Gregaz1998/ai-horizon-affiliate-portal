@@ -117,6 +117,17 @@ export const AffiliateService = {
     }
   },
 
+  // Génère un code d'affiliation unique pour l'utilisateur
+  generateAffiliateLink: (userId: string, service: string = "calendly") => {
+    // Créer une URL de base pour le service choisi (par défaut: calendly)
+    const baseUrl = service === "calendly" 
+      ? "https://calendly.com/aihorizon/decouverte"
+      : "https://calendly.com/aihorizon/demo";
+    
+    // Ajouter un paramètre ref avec l'ID de l'utilisateur encodé
+    return `${baseUrl}?ref=${encodeURIComponent(userId.slice(0, 8))}`;
+  },
+
   // Récupère les statistiques d'affiliation d'un utilisateur
   getAffiliateStats: async (userId: string) => {
     // Simule des statistiques de base pour le moment
@@ -153,7 +164,7 @@ export const AffiliateService = {
         
         if (conversions && !convError) {
           stats.conversions = conversions.length;
-          stats.revenue = conversions.reduce((sum, conv) => sum + parseFloat(conv.amount), 0);
+          stats.revenue = conversions.reduce((sum, conv) => sum + (conv.amount as number), 0);
         }
       }
       
