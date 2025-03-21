@@ -58,15 +58,20 @@ const Register = () => {
           if (linkData || savedData?.affiliateLink) {
             navigate("/dashboard");
           }
+        } else if (currentStep === 6) {
+          // Redirection automatique vers le tableau de bord après la dernière étape
+          // Créer un lien si l'utilisateur n'en a pas encore
+          if (!linkData) {
+            const generatedLink = AffiliateService.generateAffiliateLink(user.id, savedData);
+            await AffiliateService.createAffiliateLink(user.id, generatedLink);
+          }
+          navigate("/dashboard");
         }
       }
     };
     
     checkRegistrationStatus();
   }, [user, searchParams, navigate]);
-
-  // Get the current step from URL params or default to step 1
-  const currentStep = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;
 
   return (
     <Layout>

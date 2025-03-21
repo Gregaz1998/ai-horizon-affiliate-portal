@@ -159,6 +159,12 @@ export const AffiliateService = {
       params.append("email", userData.email);
     }
     
+    // Ajouter UTM parameters pour le suivi des performances
+    params.append("utm_source", "affiliate");
+    params.append("utm_medium", "referral");
+    params.append("utm_campaign", "aihorizon");
+    params.append("utm_id", userId);
+    
     // Construire l'URL complète
     return `${baseUrl}?${params.toString()}`;
   },
@@ -261,6 +267,79 @@ export const AffiliateService = {
       return { data, error };
     } catch (error) {
       console.error("Error in getConversionHistory:", error);
+      return { data: [], error };
+    }
+  },
+  
+  // Récupère les données de performance pour le graphique
+  getPerformanceData: async (userId: string, days = 30) => {
+    try {
+      // Récupérer les liens d'affiliation de l'utilisateur
+      const { data: links } = await AffiliateService.getUserAffiliateLinks(userId);
+      
+      if (!links || links.length === 0) {
+        return { data: [], error: null };
+      }
+      
+      // Obtenir les IDs des liens d'affiliation
+      const linkIds = links.map(link => link.id);
+      
+      // Préparer les dates pour la période à analyser
+      const today = new Date();
+      const startDate = new Date();
+      startDate.setDate(today.getDate() - days);
+      
+      // Récupérer tous les clics sur la période
+      const { data: clicksData, error: clicksError } = await supabase
+        .from("clicks")
+        .select("created_at")
+        .in("affiliate_link_id", linkIds)
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", today.toISOString());
+        
+      // Récupérer toutes les conversions sur la période
+      const { data: convsData, error: convsError } = await supabase
+        .from("conversions")
+        .select("created_at")
+        .in("affiliate_link_id", linkIds)
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", today.toISOString());
+        
+      if (clicksError || convsError) {
+        return { data: [], error: clicksError || convsError };
+      }
+      
+      // Créer un tableau pour chaque jour de la période
+      const performanceData = [];
+      
+      for (let i = 0; i < days; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - (days - 1 - i));
+        
+        // Formater la date comme YYYY-MM-DD pour comparaison
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Compter les clics pour ce jour
+        const clicksForDay = clicksData ? clicksData.filter(click => 
+          click.created_at.startsWith(dateStr)
+        ).length : 0;
+        
+        // Compter les conversions pour ce jour
+        const convsForDay = convsData ? convsData.filter(conv => 
+          conv.created_at.startsWith(dateStr)
+        ).length : 0;
+        
+        // Ajouter au tableau de résultats
+        performanceData.push({
+          name: `${date.getDate()}/${date.getMonth() + 1}`,
+          clicks: clicksForDay,
+          conversions: convsForDay
+        });
+      }
+      
+      return { data: performanceData, error: null };
+    } catch (error) {
+      console.error("Error in getPerformanceData:", error);
       return { data: [], error };
     }
   }

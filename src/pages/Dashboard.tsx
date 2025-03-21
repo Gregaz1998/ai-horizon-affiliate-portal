@@ -32,17 +32,7 @@ const Dashboard = () => {
   const [conversionHistory, setConversionHistory] = useState<ConversionEvent[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
-
-  // Sample performance data for the chart - will be replaced with real data
-  const [performanceData, setPerformanceData] = useState([
-    { name: "1 Avr", clicks: 0, conversions: 0 },
-    { name: "5 Avr", clicks: 0, conversions: 0 },
-    { name: "10 Avr", clicks: 0, conversions: 0 },
-    { name: "15 Avr", clicks: 0, conversions: 0 },
-    { name: "20 Avr", clicks: 0, conversions: 0 },
-    { name: "25 Avr", clicks: 0, conversions: 0 },
-    { name: "30 Avr", clicks: 0, conversions: 0 },
-  ]);
+  const [performanceData, setPerformanceData] = useState([]);
 
   useEffect(() => {
     if (!user && !isLoading) {
@@ -111,22 +101,11 @@ const Dashboard = () => {
             setConversionHistory(conversionData);
           }
           
-          // Générer des données de performance pour le graphique (simulation)
-          // Dans une implémentation réelle, ces données viendraient de la base de données
-          const today = new Date();
-          const daysOfMonth = [];
-          
-          for (let i = 0; i < 30; i++) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - (29 - i));
-            daysOfMonth.push({
-              name: `${date.getDate()}/${date.getMonth() + 1}`,
-              clicks: Math.floor(Math.random() * 5),
-              conversions: Math.floor(Math.random() * 2)
-            });
+          // Charger les données de performance pour le graphique
+          const { data: perfData } = await AffiliateService.getPerformanceData(user.id, 30);
+          if (perfData) {
+            setPerformanceData(perfData);
           }
-          
-          setPerformanceData(daysOfMonth);
           
         } catch (error) {
           console.error("Error fetching affiliate data:", error);
@@ -173,7 +152,11 @@ const Dashboard = () => {
       }
     };
     
-    setupRealtimeUpdates();
+    const cleanup = setupRealtimeUpdates();
+    
+    return () => {
+      if (cleanup) cleanup();
+    };
     
   }, [user, isLoading, navigate, toast]);
 
