@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const TrackingService = {
   async trackClick(code: string): Promise<boolean> {
     try {
+      // Essayer d'abord d'utiliser la fonction Edge
       const response = await fetch(`${window.location.origin}/functions/v1/track-click`, {
         method: 'POST',
         headers: {
@@ -25,9 +26,9 @@ export const TrackingService = {
     } catch (error) {
       console.error('Error tracking click:', error);
       
-      // Fallback to client-side tracking
+      // Plan B : suivi côté client
       try {
-        // Get the affiliate link id
+        // Récupérer l'ID du lien d'affiliation
         const { data: linkData, error: linkError } = await supabase
           .from('affiliate_links')
           .select('id')
@@ -36,7 +37,7 @@ export const TrackingService = {
         
         if (linkError) throw linkError;
         
-        // Record the click
+        // Enregistrer le clic
         const { error } = await supabase
           .from('clicks')
           .insert([
@@ -57,10 +58,10 @@ export const TrackingService = {
     }
   },
 
-  // For testing - create a sample conversion (normally would be done server-side)
+  // Pour tester - créer une conversion exemple (normalement côté serveur)
   async createSampleConversion(code: string): Promise<boolean> {
     try {
-      // Get the affiliate link id
+      // Récupérer l'ID du lien d'affiliation
       const { data: linkData, error: linkError } = await supabase
         .from('affiliate_links')
         .select('id')
@@ -69,7 +70,7 @@ export const TrackingService = {
       
       if (linkError) throw linkError;
       
-      // Generate a random product
+      // Générer un produit aléatoire
       const products = [
         { name: "AI Horizon Basic", amount: 49 },
         { name: "AI Horizon Pro", amount: 99 },
@@ -78,7 +79,7 @@ export const TrackingService = {
       
       const randomProduct = products[Math.floor(Math.random() * products.length)];
       
-      // Create the conversion
+      // Créer la conversion
       const { error } = await supabase
         .from('conversions')
         .insert([

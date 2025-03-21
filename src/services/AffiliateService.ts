@@ -1,5 +1,4 @@
 
-// Si le fichier est déjà défini, nous ne modifions que les fonctions suivantes
 import { supabase } from "@/integrations/supabase/client";
 
 interface RegistrationData {
@@ -35,6 +34,20 @@ export interface AffiliateStats {
   clicks: number;
   conversions: number;
   revenue: number;
+}
+
+export interface ClickEvent {
+  id: string;
+  created_at: string;
+  referrer: string | null;
+}
+
+export interface ConversionEvent {
+  id: string;
+  created_at: string;
+  product: string;
+  amount: number;
+  status: string | null;
 }
 
 const STORAGE_KEY = "aihorizon_registration_data";
@@ -118,20 +131,41 @@ export const AffiliateService = {
   },
 
   // Génère un code d'affiliation unique pour l'utilisateur
-  generateAffiliateLink: (userId: string, service: string = "calendly") => {
-    // Créer une URL de base pour le service choisi (par défaut: calendly)
-    const baseUrl = service === "calendly" 
-      ? "https://calendly.com/aihorizon/decouverte"
-      : "https://calendly.com/aihorizon/demo";
+  generateAffiliateLink: (userId: string, userData?: RegistrationData) => {
+    // Récupérer les données d'inscription si non fournies
+    if (!userData) {
+      userData = AffiliateService.loadRegistrationData() || {};
+    }
     
-    // Ajouter un paramètre ref avec l'ID de l'utilisateur encodé
-    return `${baseUrl}?ref=${encodeURIComponent(userId.slice(0, 8))}`;
+    // Utiliser les données de l'utilisateur pour un lien personnalisé
+    const baseUrl = "https://calendly.com/aihorizon98/30min";
+    
+    // Construire les paramètres de requête avec les informations de l'utilisateur
+    const params = new URLSearchParams();
+    
+    // Ajouter le paramètre ref pour le suivi
+    params.append("ref", userId.slice(0, 8));
+    
+    // Ajouter le nom si disponible
+    if (userData.firstName || userData.lastName) {
+      const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
+      if (fullName) {
+        params.append("name", fullName);
+      }
+    }
+    
+    // Ajouter l'email si disponible
+    if (userData.email) {
+      params.append("email", userData.email);
+    }
+    
+    // Construire l'URL complète
+    return `${baseUrl}?${params.toString()}`;
   },
 
   // Récupère les statistiques d'affiliation d'un utilisateur
   getAffiliateStats: async (userId: string) => {
-    // Simule des statistiques de base pour le moment
-    // À terme, cela pourrait être implémenté avec de vraies requêtes Supabase
+    // Initialiser les statistiques de base
     const stats: AffiliateStats = {
       clicks: 0,
       conversions: 0,
@@ -139,14 +173,14 @@ export const AffiliateService = {
     };
 
     try {
-      // Compte le nombre de clics pour les liens d'affiliation de l'utilisateur
+      // Récupérer les liens d'affiliation de l'utilisateur
       const { data: links } = await AffiliateService.getUserAffiliateLinks(userId);
       
       if (links && links.length > 0) {
-        // Obtient les IDs des liens d'affiliation
+        // Obtenir les IDs des liens d'affiliation
         const linkIds = links.map(link => link.id);
         
-        // Compte les clics pour ces liens
+        // Compter les clics pour ces liens
         const { count: clickCount, error: clickError } = await supabase
           .from("clicks")
           .select("*", { count: "exact", head: true })
@@ -156,7 +190,7 @@ export const AffiliateService = {
           stats.clicks = clickCount;
         }
 
-        // Compte les conversions et calcule le revenu
+        // Compter les conversions et calculer le revenu
         const { data: conversions, error: convError } = await supabase
           .from("conversions")
           .select("*")
@@ -172,6 +206,62 @@ export const AffiliateService = {
     } catch (error) {
       console.error("Error in getAffiliateStats:", error);
       return { data: stats, error };
+    }
+  },
+
+  // Récupère l'historique des clics pour les liens d'un utilisateur
+  getClickHistory: async (userId: string, limit = 10) => {
+    try {
+      // Récupérer les liens d'affiliation de l'utilisateur
+      const { data: links } = await AffiliateService.getUserAffiliateLinks(userId);
+      
+      if (!links || links.length === 0) {
+        return { data: [], error: null };
+      }
+      
+      // Obtenir les IDs des liens d'affiliation
+      const linkIds = links.map(link => link.id);
+      
+      // Récupérer les clics pour ces liens
+      const { data, error } = await supabase
+        .from("clicks")
+        .select("id, created_at, referrer")
+        .in("affiliate_link_id", linkIds)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      
+      return { data, error };
+    } catch (error) {
+      console.error("Error in getClickHistory:", error);
+      return { data: [], error };
+    }
+  },
+
+  // Récupère l'historique des conversions pour les liens d'un utilisateur
+  getConversionHistory: async (userId: string, limit = 10) => {
+    try {
+      // Récupérer les liens d'affiliation de l'utilisateur
+      const { data: links } = await AffiliateService.getUserAffiliateLinks(userId);
+      
+      if (!links || links.length === 0) {
+        return { data: [], error: null };
+      }
+      
+      // Obtenir les IDs des liens d'affiliation
+      const linkIds = links.map(link => link.id);
+      
+      // Récupérer les conversions pour ces liens
+      const { data, error } = await supabase
+        .from("conversions")
+        .select("id, created_at, product, amount, status")
+        .in("affiliate_link_id", linkIds)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      
+      return { data, error };
+    } catch (error) {
+      console.error("Error in getConversionHistory:", error);
+      return { data: [], error };
     }
   }
 };
