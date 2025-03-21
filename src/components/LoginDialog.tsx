@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface LoginDialogProps {
   trigger?: React.ReactNode;
@@ -24,21 +25,42 @@ const LoginDialog = ({ trigger, defaultOpen, onOpenChange }: LoginDialogProps) =
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [open, setOpen] = useState(defaultOpen || false);
+  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
+  
+  // If user is already logged in, redirect to dashboard
+  if (user) {
+    navigate("/dashboard");
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      await signIn(email, password);
+      const { error } = await signIn(email, password);
+      if (!error) {
+        setOpen(false);
+        if (onOpenChange) {
+          onOpenChange(false);
+        }
+      }
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (onOpenChange) {
+      onOpenChange(newOpen);
+    }
+  };
 
   return (
-    <Dialog defaultOpen={defaultOpen} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -57,6 +79,7 @@ const LoginDialog = ({ trigger, defaultOpen, onOpenChange }: LoginDialogProps) =
               onChange={(e) => setEmail(e.target.value)} 
               placeholder="votre@email.com" 
               required 
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -67,6 +90,7 @@ const LoginDialog = ({ trigger, defaultOpen, onOpenChange }: LoginDialogProps) =
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
+              disabled={isLoading}
             />
           </div>
           <div className="text-right text-sm">

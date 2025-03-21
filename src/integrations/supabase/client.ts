@@ -16,6 +16,7 @@ export const supabase = createClient<Database>(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      storage: localStorage,
     },
     realtime: {
       params: {
@@ -23,4 +24,30 @@ export const supabase = createClient<Database>(
       }
     }
   }
+);
+
+// Enable realtime subscription for affiliate_links, clicks, and conversions tables
+const enableRealtimeForTables = async () => {
+  await supabase.channel('schema-db-changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'affiliate_links',
+    }, (payload) => console.log('Change received for affiliate_links!', payload))
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'clicks',
+    }, (payload) => console.log('Change received for clicks!', payload))
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'conversions',
+    }, (payload) => console.log('Change received for conversions!', payload))
+    .subscribe();
+};
+
+// Initialize realtime subscriptions
+enableRealtimeForTables().catch(err => 
+  console.error("Failed to enable realtime subscriptions:", err)
 );

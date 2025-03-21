@@ -14,7 +14,10 @@ const Register = () => {
   const [isVerified, setIsVerified] = useState(false);
   const navigate = useNavigate();
   
-  // Effet pour vérifier si l'utilisateur vient de confirmer son email
+  // Get current step from URL params or default to 1
+  const step = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;
+  
+  // Effect to check if the user just confirmed their email
   useEffect(() => {
     const checkAndUpdateVerification = async () => {
       if (user) {
@@ -22,10 +25,10 @@ const Register = () => {
         if (isEmailVerified) {
           setIsVerified(true);
           
-          // Si l'utilisateur a confirmé son email, passer à l'étape 6
+          // If the user confirmed their email, move to step 6
           setSearchParams({ step: "6" });
           
-          // Mettre à jour les données stockées pour refléter la vérification
+          // Update stored data to reflect verification
           const savedData = AffiliateService.loadRegistrationData();
           if (savedData) {
             AffiliateService.saveRegistrationData({
@@ -41,26 +44,26 @@ const Register = () => {
     checkAndUpdateVerification();
   }, [user, checkEmailVerification, setSearchParams]);
 
-  // Si user est connecté et a terminé l'inscription (étape > 6 ou aucune étape spécifiée)
-  // alors rediriger vers le dashboard
+  // If user is connected and has completed registration (step > 6 or no step specified)
+  // then redirect to dashboard
   useEffect(() => {
     const checkRegistrationStatus = async () => {
       if (user) {
         const currentStep = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;
         const savedData = AffiliateService.loadRegistrationData();
         
-        // Vérifier si l'utilisateur a déjà un lien d'affiliation
+        // Check if user already has an affiliate link
         const { data: linkData } = await AffiliateService.getAffiliateLink(user.id);
         
-        // Si l'utilisateur est à l'étape finale ou au-delà, ou s'il n'y a pas d'étape spécifiée
-        // et qu'il a terminé l'inscription (a un lien d'affiliation)
+        // If user is at final step or beyond, or if no step specified
+        // and has completed registration (has an affiliate link)
         if ((currentStep > 6 || !searchParams.get("step"))) {
           if (linkData || savedData?.affiliateLink) {
             navigate("/dashboard");
           }
         } else if (currentStep === 6) {
-          // Redirection automatique vers le tableau de bord après la dernière étape
-          // Créer un lien si l'utilisateur n'en a pas encore
+          // Automatic redirect to dashboard after last step
+          // Create link if user doesn't have one yet
           if (!linkData) {
             const generatedLink = AffiliateService.generateAffiliateLink(user.id, savedData);
             await AffiliateService.createAffiliateLink(user.id, generatedLink);
@@ -94,7 +97,7 @@ const Register = () => {
             </p>
           </motion.div>
 
-          <RegistrationSteps initialStep={currentStep} />
+          <RegistrationSteps initialStep={step} />
         </div>
       </section>
     </Layout>
