@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import { formatDistance } from "date-fns";
 import { fr } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const { user, isLoading, signOut } = useAuth();
