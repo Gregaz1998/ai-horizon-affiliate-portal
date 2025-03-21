@@ -958,5 +958,4 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
                     <p className="text-red-500 text-sm mt-1">{errors.service}</p>
                   )}
                 </div>
-                
-                <div className
+              </div>
