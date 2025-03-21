@@ -44,6 +44,11 @@ const enableRealtimeForTables = async () => {
       schema: 'public',
       table: 'conversions',
     }, (payload) => console.log('Change received for conversions!', payload))
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'profiles',
+    }, (payload) => console.log('Change received for profiles!', payload))
     .subscribe();
 };
 

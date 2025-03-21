@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface LoginDialogProps {
   trigger?: React.ReactNode;
@@ -28,12 +29,15 @@ const LoginDialog = ({ trigger, defaultOpen, onOpenChange }: LoginDialogProps) =
   const [open, setOpen] = useState(defaultOpen || false);
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
-  // If user is already logged in, redirect to dashboard
-  if (user) {
-    navigate("/dashboard");
-    return null;
-  }
+  useEffect(() => {
+    // If user is already logged in, redirect to dashboard
+    if (user) {
+      navigate("/dashboard");
+      setOpen(false);
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,12 +45,48 @@ const LoginDialog = ({ trigger, defaultOpen, onOpenChange }: LoginDialogProps) =
     
     try {
       const { error } = await signIn(email, password);
-      if (!error) {
-        setOpen(false);
-        if (onOpenChange) {
-          onOpenChange(false);
+      
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast({
+            title: "Échec de connexion",
+            description: "Email ou mot de passe incorrect",
+            variant: "destructive",
+          });
+        } else if (error.message.includes("Email not confirmed")) {
+          toast({
+            title: "Email non confirmé",
+            description: "Veuillez vérifier votre email pour confirmer votre compte ou continuez l'inscription",
+            variant: "destructive",
+          });
+          navigate("/register?step=5");
+        } else {
+          toast({
+            title: "Erreur de connexion",
+            description: error.message,
+            variant: "destructive",
+          });
         }
+        return;
       }
+      
+      setOpen(false);
+      if (onOpenChange) {
+        onOpenChange(false);
+      }
+      
+      toast({
+        description: "Connexion réussie ! Redirection vers le tableau de bord...",
+      });
+      
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite lors de la connexion",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import LoginDialog from "@/components/LoginDialog";
@@ -21,6 +21,7 @@ const Header = () => {
     { name: "Tableau de bord", path: "/dashboard", public: false },
     { name: "Ressources", path: "/resources", public: false },
     { name: "Classement", path: "/leaderboard", public: false },
+    { name: "Profil", path: "/profile", public: false },
   ].filter(link => link.public || user)
     .filter(link => !(link.hideWhenLoggedIn && user));
 

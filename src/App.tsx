@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Resources from "./pages/Resources";
 import Leaderboard from "./pages/Leaderboard";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import "./App.css";
 
@@ -41,6 +42,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Leaderboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               } 
             />

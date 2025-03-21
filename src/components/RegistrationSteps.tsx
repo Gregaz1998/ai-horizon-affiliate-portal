@@ -264,14 +264,46 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
     }
   };
 
-  const manuallyVerifyAndContinue = () => {
-    setIsEmailVerified(true);
-    setManualVerifyDialogOpen(false);
-    setCurrentStep(6);
-    toast({
-      title: "Continuation manuelle",
-      description: "Vous avez été avancé à l'étape finale. Merci de confirmer votre email quand vous le recevrez.",
-    });
+  const manuallyVerifyAndContinue = async () => {
+    setIsLoading(true);
+    try {
+      setIsEmailVerified(true);
+      setManualVerifyDialogOpen(false);
+      
+      // Save the current registration state
+      AffiliateService.saveRegistrationData({
+        ...formData,
+        emailConfirmationSent: true,
+        isEmailVerified: true
+      });
+      
+      // Create affiliate link in database if user is logged in
+      if (user) {
+        await AffiliateService.createAffiliateLink(user.id, formData.affiliateLink);
+      }
+      
+      // Advance to the final step and then redirect to dashboard
+      setCurrentStep(6);
+      
+      toast({
+        title: "Redirection...",
+        description: "Vous êtes redirigé vers votre tableau de bord.",
+      });
+      
+      // Short timeout to show the success message before navigating
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1500);
+    } catch (error) {
+      console.error("Error in manuallyVerifyAndContinue:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur s'est produite. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -424,15 +456,39 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         return false;
       }
       
+      // Generate affiliate link with UTM parameters for tracking
+      const baseUrl = "https://calendly.com/aihorizon98/30min";
+      const utmParams = new URLSearchParams({
+        utm_source: "affiliate",
+        utm_medium: "calendly",
+        utm_campaign: `${formData.service || 'default'}-${formData.country || 'all'}`,
+        affiliate_email: formData.email
+      });
+      const calendlyAffiliateLink = `${baseUrl}?${utmParams.toString()}`;
+      
+      // Update form data with the generated link
+      setFormData(prev => ({
+        ...prev,
+        affiliateLink: calendlyAffiliateLink
+      }));
+      
       if (confirmationRequired) {
         setEmailConfirmationSent(true);
         setCurrentStep(5);
+        
+        // Save data with updated affiliate link
+        AffiliateService.saveRegistrationData({
+          ...formData,
+          affiliateLink: calendlyAffiliateLink,
+          emailConfirmationSent: true,
+          isEmailVerified: false
+        });
+        
         return true;
       }
       
       if (user && user.id) {
-        const calendlyAffiliateLink = `https://calendly.com/aihorizon98/30min?affiliate_email=${encodeURIComponent(formData.email)}`;
-        
+        // Save the affiliate link to the database
         const { error: linkError } = await AffiliateService.createAffiliateLink(
           user.id, 
           calendlyAffiliateLink
@@ -448,12 +504,16 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         }
       }
       
+      // Clear registration data and redirect to dashboard
       AffiliateService.clearRegistrationData();
       
       toast({
         title: "Inscription réussie !",
         description: "Vous êtes redirigé vers votre tableau de bord.",
       });
+      
+      // Redirect to dashboard
+      navigate("/dashboard");
       
       return true;
     } catch (error) {
@@ -899,333 +959,4 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
                   )}
                 </div>
                 
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium text-gray-800 mb-3">Pays où vous souhaitez prospecter :</h3>
-                    <Select 
-                      value={formData.country} 
-                      onValueChange={(value) => handleSelectChange("country", value)}
-                    >
-                      <SelectTrigger className={errors.country ? "border-red-500" : ""}>
-                        <SelectValue placeholder="Sélectionnez un pays" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(countries).map(([value, { label }]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.country && (
-                      <p className="text-red-500 text-sm mt-1">{errors.country}</p>
-                    )}
-                  </div>
-                  
-                  {formData.country && (
-                    <div>
-                      <h3 className="font-medium text-gray-800 mb-3">Région où vous souhaitez prospecter :</h3>
-                      <Select 
-                        value={formData.region} 
-                        onValueChange={(value) => handleSelectChange("region", value)}
-                      >
-                        <SelectTrigger className={errors.region ? "border-red-500" : ""}>
-                          <SelectValue placeholder="Sélectionnez une région" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {countries[formData.country as keyof typeof countries]?.regions.map((region) => (
-                            <SelectItem key={region} value={region}>
-                              {region}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.region && (
-                        <p className="text-red-500 text-sm mt-1">{errors.region}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="text-sm text-gray-600 p-4 bg-blue-50 rounded-lg">
-                <p>
-                  <strong>Conseil:</strong> Partagez votre lien Calendly d'affiliation sur vos réseaux sociaux, votre blog, ou votre site web pour que vos prospects puissent prendre rendez-vous. Vous pouvez suivre vos performances dans votre tableau de bord.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        );
-      
-      case 5:
-        return (
-          <motion.div
-            key="step5"
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            variants={stepVariants}
-            className="space-y-6 text-center"
-          >
-            <div className="py-8">
-              <div className="mx-auto bg-orange-100 w-24 h-24 rounded-full flex items-center justify-center mb-6">
-                <CheckCircle2 className="h-12 w-12 text-orange-500" />
-              </div>
-              
-              <h2 className="text-2xl font-bold mb-4">Vérifiez votre email</h2>
-              <p className="text-gray-600 mb-8">
-                Un lien de confirmation a été envoyé à <span className="font-semibold">{formData.email}</span>.
-                <br />Veuillez vérifier votre boîte de réception et cliquer sur le lien pour activer votre compte.
-              </p>
-              
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 inline-block mx-auto text-left">
-                <div className="flex items-start">
-                  <div className="mr-3 mt-1">
-                    {isEmailVerified ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-800">
-                      {isEmailVerified 
-                        ? "Email vérifié ! Vous allez être redirigé..." 
-                        : "En attente de vérification..."}
-                    </p>
-                    <p className="text-xs text-blue-600 mt-1">
-                      {isEmailVerified
-                        ? "Votre compte est maintenant actif."
-                        : "Nous vérifions automatiquement si vous avez confirmé votre email."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-8 text-sm text-gray-500">
-                <p>Vous n'avez pas reçu d'email ? Vérifiez votre dossier spam ou <button className="text-brand-purple underline" onClick={() => handleSignUp()}>cliquez ici pour renvoyer</button>.</p>
-              </div>
-
-              <div className="mt-6">
-                <p className="text-sm text-gray-600 mb-3">
-                  Problème avec le lien de confirmation ?
-                </p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setManualVerifyDialogOpen(true)}
-                >
-                  Continuer sans vérification
-                </Button>
-              </div>
-            </div>
-
-            <Dialog open={manualVerifyDialogOpen} onOpenChange={setManualVerifyDialogOpen}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Continuer sans vérification d'email</DialogTitle>
-                  <DialogDescription>
-                    Cette option vous permet de continuer l'inscription même si vous rencontrez des difficultés avec la vérification d'email.
-                    Veuillez noter que vous devrez tout de même confirmer votre email plus tard pour accéder à toutes les fonctionnalités.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4">
-                  <p className="text-sm text-gray-500 mb-4">
-                    Recommandations:
-                    <ul className="list-disc pl-5 mt-2 space-y-1">
-                      <li>Vérifiez que votre adresse email est correcte</li>
-                      <li>Consultez votre dossier spam</li>
-                      <li>Essayez un autre navigateur si le lien ne fonctionne pas</li>
-                    </ul>
-                  </p>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setManualVerifyDialogOpen(false)}>Annuler</Button>
-                  <Button onClick={manuallyVerifyAndContinue}>Continuer sans vérification</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </motion.div>
-        );
-      
-      case 6:
-        return (
-          <motion.div
-            key="step6"
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            variants={stepVariants}
-            className="space-y-6 text-center"
-          >
-            <div className="py-8">
-              <div className="mx-auto bg-green-100 w-24 h-24 rounded-full flex items-center justify-center mb-6">
-                <CheckCircle2 className="h-12 w-12 text-green-500" />
-              </div>
-              
-              <h2 className="text-2xl font-bold mb-4">Félicitations !</h2>
-              <p className="text-gray-600 mb-8">
-                Votre compte a été créé avec succès{isEmailVerified ? " et votre email a été vérifié" : ""}.
-                <br />Vous êtes prêt à commencer votre expérience d'affiliation.
-              </p>
-
-              {!isEmailVerified && (
-                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mb-6 max-w-md mx-auto text-left">
-                  <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-yellow-500 mt-0.5 mr-2 flex-shrink-0" />
-                    <p className="text-sm text-yellow-700">
-                      Veuillez confirmer votre email quand vous le recevrez pour activer toutes les fonctionnalités de votre compte.
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              <Button
-                size="lg"
-                onClick={() => navigate("/dashboard")}
-                className="mt-4"
-              >
-                Accéder à mon tableau de bord
-              </Button>
-            </div>
-          </motion.div>
-        );
-      
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="mt-16">
-      <div className="mb-8">
-        <div className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="inline-block min-w-full">
-              <div className="mx-auto px-4 sm:px-6 w-full max-w-5xl">
-                <nav aria-label="Progress">
-                  <ol className="flex items-center">
-                    {steps.map((step, index) => {
-                      const isActive = step.id === currentStep;
-                      const isCompleted = step.id < currentStep;
-                      const isDisabled = step.id > currentStep;
-                      
-                      const StepIcon = step.icon;
-                      
-                      return (
-                        <li key={step.id} className={`relative ${index !== steps.length - 1 ? 'flex-1' : ''}`}>
-                          {index !== 0 && (
-                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                              <div className={`h-0.5 w-full ${isDisabled ? 'bg-gray-200' : 'bg-brand-purple'}`} />
-                            </div>
-                          )}
-                          
-                          <div
-                            className={`relative flex items-center justify-center ${isActive ? 'cursor-default' : isCompleted ? 'cursor-pointer' : 'cursor-not-allowed'}`}
-                            onClick={() => isCompleted && setCurrentStep(step.id)}
-                          >
-                            <span className="relative flex h-12 w-12 items-center justify-center rounded-full z-10 text-white">
-                              {isActive ? (
-                                <span className="flex h-full w-full items-center justify-center rounded-full bg-brand-purple">
-                                  <StepIcon className="h-6 w-6" />
-                                </span>
-                              ) : isCompleted ? (
-                                <span className="flex h-full w-full items-center justify-center rounded-full bg-green-500">
-                                  <CheckCircle2 className="h-6 w-6" />
-                                </span>
-                              ) : (
-                                <span className="flex h-full w-full items-center justify-center rounded-full bg-gray-200 text-gray-500">
-                                  <StepIcon className="h-6 w-6" />
-                                </span>
-                              )}
-                            </span>
-                            
-                            <div className="hidden sm:block mt-2 absolute top-14 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                              <span
-                                className={`text-sm font-medium ${
-                                  isDisabled ? 'text-gray-500' : 'text-gray-900'
-                                }`}
-                              >
-                                {step.name}
-                              </span>
-                            </div>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ol>
-                </nav>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Numéro d'entreprise requis</DialogTitle>
-            <DialogDescription>
-              Pour participer au programme d'affiliation, vous devez disposer d'un numéro d'entreprise valide. Sans celui-ci, vous ne pourrez pas continuer l'inscription.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-gray-500">
-              Le numéro d'entreprise est nécessaire pour des raisons fiscales et légales. Si vous n'en avez pas encore, vous pouvez :
-            </p>
-            <ul className="list-disc pl-5 text-sm text-gray-500 space-y-2">
-              <li>Créer une entreprise individuelle</li>
-              <li>Rejoindre une coopérative d'activités</li>
-              <li>Contacter notre support pour obtenir de l'aide</li>
-            </ul>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleCloseContactDialog}>
-              Retour à l'accueil
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <div className="mx-auto px-4 sm:px-6 max-w-4xl mb-16">
-        <div className="bg-white shadow-sm rounded-lg p-8">
-          <AnimatePresence mode="wait">
-            {renderStepContent()}
-          </AnimatePresence>
-          
-          {currentStep !== 5 && (
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={prevStep}
-                disabled={currentStep === 1}
-                className={currentStep === 1 ? "invisible" : ""}
-              >
-                <ChevronLeft className="mr-2 h-4 w-4" /> Précédent
-              </Button>
-              
-              <Button
-                onClick={nextStep}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Chargement...
-                  </>
-                ) : currentStep === steps.length - 1 ? (
-                  "Terminer"
-                ) : (
-                  <>
-                    Suivant <ChevronRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default RegistrationSteps;
+                <div className
