@@ -5,13 +5,14 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import RegistrationSteps from "@/components/RegistrationSteps";
 import { useAuth } from "@/context/AuthContext";
-import { Navigate } from "react-router-dom";
 import { AffiliateService } from "@/services/AffiliateService";
+import { Loader2 } from "lucide-react";
 
 const Register = () => {
   const { user, checkEmailVerification } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [isVerified, setIsVerified] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   
   // Get current step from URL params or default to 1
@@ -37,12 +38,18 @@ const Register = () => {
               isEmailVerified: true
             });
           }
+          
+          // After a short delay, redirect to dashboard
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 1500);
         }
       }
+      setIsLoading(false);
     };
     
     checkAndUpdateVerification();
-  }, [user, checkEmailVerification, setSearchParams]);
+  }, [user, checkEmailVerification, setSearchParams, navigate]);
 
   // If user is connected and has completed registration (step > 6 or no step specified)
   // then redirect to dashboard
@@ -64,17 +71,36 @@ const Register = () => {
         } else if (currentStep === 6) {
           // Automatic redirect to dashboard after last step
           // Create link if user doesn't have one yet
-          if (!linkData) {
-            const generatedLink = AffiliateService.generateAffiliateLink(user.id, savedData);
-            await AffiliateService.createAffiliateLink(user.id, generatedLink);
+          if (!linkData && savedData?.affiliateLink) {
+            await AffiliateService.createAffiliateLink(user.id, savedData.affiliateLink);
           }
-          navigate("/dashboard");
+          
+          // Short delay before redirecting to dashboard
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 1500);
         }
       }
+      setIsLoading(false);
     };
     
     checkRegistrationStatus();
   }, [user, searchParams, navigate]);
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <section className="pt-32 pb-20">
+          <div className="flex justify-center items-center min-h-[50vh]">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+              <p>Chargement...</p>
+            </div>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

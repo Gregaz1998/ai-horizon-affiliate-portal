@@ -103,6 +103,24 @@ export type Database = {
           },
         ]
       }
+      generations: {
+        Row: {
+          created_at: string | null
+          id: number
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: number
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -154,6 +172,54 @@ export type Database = {
           id?: string
           last_name?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          address: string | null
+          city: string | null
+          country: string
+          created_at: string | null
+          email: string
+          email_verified: boolean | null
+          first_name: string
+          id: string
+          last_name: string
+          password: string
+          phone_number: string
+          postal_code: string | null
+          referral_source: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          country: string
+          created_at?: string | null
+          email: string
+          email_verified?: boolean | null
+          first_name: string
+          id?: string
+          last_name: string
+          password: string
+          phone_number: string
+          postal_code?: string | null
+          referral_source?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          country?: string
+          created_at?: string | null
+          email?: string
+          email_verified?: boolean | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          password?: string
+          phone_number?: string
+          postal_code?: string | null
+          referral_source?: string | null
         }
         Relationships: []
       }

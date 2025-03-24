@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -456,14 +457,20 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         return false;
       }
       
-      // Generate affiliate link with UTM parameters for tracking
+      // Generate trackable affiliate link with UTM parameters
+      const userId = user?.id || 'unknown';
       const baseUrl = "https://calendly.com/aihorizon98/30min";
       const utmParams = new URLSearchParams({
         utm_source: "affiliate",
         utm_medium: "calendly",
         utm_campaign: `${formData.service || 'default'}-${formData.country || 'all'}`,
-        affiliate_email: formData.email
+        utm_id: userId,
+        utm_content: formData.email.split('@')[0],
+        ref: userId.substring(0, 8),
+        name: `${formData.firstName.toUpperCase()} ${formData.lastName}`,
+        email: formData.email
       });
+      
       const calendlyAffiliateLink = `${baseUrl}?${utmParams.toString()}`;
       
       // Update form data with the generated link
@@ -553,7 +560,14 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
   };
 
   const generateAffiliateLink = () => {
-    return `https://calendly.com/aihorizon98/30min?affiliate_email=${encodeURIComponent(formData.email)}`;
+    const baseUrl = "https://calendly.com/aihorizon98/30min";
+    const params = new URLSearchParams({
+      affiliate_email: encodeURIComponent(formData.email),
+      utm_source: "affiliate",
+      utm_medium: "calendly",
+      utm_campaign: formData.service || "default"
+    });
+    return `${baseUrl}?${params.toString()}`;
   };
 
   if (currentStep === 4 && !formData.affiliateLink) {
@@ -958,4 +972,374 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
                     <p className="text-red-500 text-sm mt-1">{errors.service}</p>
                   )}
                 </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium text-gray-800 mb-3">Pays ciblé :</h3>
+                    <Select 
+                      value={formData.country} 
+                      onValueChange={(value) => handleSelectChange("country", value)}
+                    >
+                      <SelectTrigger className={errors.country ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Sélectionnez un pays" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(countries).map(([key, { label }]) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.country && (
+                      <p className="text-red-500 text-sm mt-1">{errors.country}</p>
+                    )}
+                  </div>
+                  
+                  {formData.country && (
+                    <div>
+                      <h3 className="font-medium text-gray-800 mb-3">Région ciblée :</h3>
+                      <Select 
+                        value={formData.region} 
+                        onValueChange={(value) => handleSelectChange("region", value)}
+                      >
+                        <SelectTrigger className={errors.region ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Sélectionnez une région" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries[formData.country as keyof typeof countries]?.regions.map((region) => (
+                            <SelectItem key={region} value={region}>
+                              {region}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.region && (
+                        <p className="text-red-500 text-sm mt-1">{errors.region}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
+            </div>
+            
+            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+              <h3 className="font-medium text-amber-800 mb-2">Comment ça marche :</h3>
+              <ul className="text-sm text-amber-700 space-y-2">
+                <li className="flex items-start">
+                  <span className="font-bold mr-2">1.</span>
+                  <span>Partagez votre lien d'affiliation avec vos prospects.</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="font-bold mr-2">2.</span>
+                  <span>Lorsqu'ils réservent un rendez-vous via Calendly, vous recevrez une commission.</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="font-bold mr-2">3.</span>
+                  <span>Suivez vos statistiques et vos gains en temps réel sur votre tableau de bord.</span>
+                </li>
+              </ul>
+            </div>
+          </motion.div>
+        );
+      
+      case 5:
+        return (
+          <motion.div
+            key="step5"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={stepVariants}
+            className="space-y-6"
+          >
+            <h2 className="text-2xl font-bold mb-6">Vérification de votre email</h2>
+            
+            {!emailConfirmationSent ? (
+              <div className="text-center py-8">
+                <div className="flex justify-center mb-6">
+                  <Loader2 className="h-12 w-12 animate-spin text-brand-purple" />
+                </div>
+                <p className="text-gray-600 mb-4">
+                  Envoi de l'email de confirmation en cours...
+                </p>
+              </div>
+            ) : isEmailVerified ? (
+              <div className="bg-green-50 p-6 rounded-lg border border-green-200 text-center">
+                <div className="flex justify-center mb-4">
+                  <CheckCircle2 className="h-12 w-12 text-green-500" />
+                </div>
+                <h3 className="text-xl font-semibold text-green-800 mb-2">
+                  Email vérifié avec succès !
+                </h3>
+                <p className="text-green-700 mb-6">
+                  Votre adresse email a été confirmée. Vous pouvez maintenant accéder à votre tableau de bord.
+                </p>
+                <Button onClick={() => navigate('/dashboard')}>
+                  Accéder à mon tableau de bord
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                  <div className="text-center mb-6">
+                    <div className="flex justify-center mb-4">
+                      <CheckCircle2 className="h-12 w-12 text-blue-500" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-blue-800 mb-2">
+                      Email de confirmation envoyé !
+                    </h3>
+                    <p className="text-blue-700">
+                      Un email de confirmation a été envoyé à <span className="font-semibold">{formData.email}</span>.
+                      Veuillez vérifier votre boîte de réception et cliquer sur le lien pour confirmer votre adresse email.
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-center space-x-2 mb-6">
+                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-pulse delay-150"></div>
+                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-pulse delay-300"></div>
+                  </div>
+                  
+                  <div className="text-center text-sm text-blue-700">
+                    En attente de confirmation...
+                  </div>
+                </div>
+                
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <h3 className="font-medium text-gray-800 mb-3">Conseils :</h3>
+                  <ul className="text-sm text-gray-600 space-y-2">
+                    <li className="flex items-start">
+                      <CheckCircle2 className="h-4 w-4 mr-2 mt-0.5 text-green-500 flex-shrink-0" />
+                      <span>Vérifiez votre dossier spam si vous ne trouvez pas l'email.</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle2 className="h-4 w-4 mr-2 mt-0.5 text-green-500 flex-shrink-0" />
+                      <span>L'email peut prendre quelques minutes pour arriver.</span>
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="text-center">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setManualVerifyDialogOpen(true)}
+                  >
+                    Continuer sans vérification
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            <Dialog open={manualVerifyDialogOpen} onOpenChange={setManualVerifyDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Continuer sans vérification d'email</DialogTitle>
+                  <DialogDescription>
+                    Vous pouvez continuer sans vérifier votre email, mais certaines fonctionnalités pourraient être limitées.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <p className="text-amber-600 flex items-start">
+                    <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+                    <span>
+                      Nous vous recommandons de vérifier votre email dès que possible pour profiter de toutes les fonctionnalités du programme d'affiliation.
+                    </span>
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setManualVerifyDialogOpen(false)}
+                  >
+                    Annuler
+                  </Button>
+                  <Button 
+                    onClick={manuallyVerifyAndContinue}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Chargement...
+                      </>
+                    ) : (
+                      "Continuer vers le tableau de bord"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
+            <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Numéro d'entreprise requis</DialogTitle>
+                  <DialogDescription>
+                    Pour participer au programme d'affiliation, vous devez disposer d'un numéro d'entreprise valide.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <p>
+                    Veuillez nous contacter si vous avez besoin d'aide pour obtenir un numéro d'entreprise ou si vous avez des questions concernant cette exigence.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleCloseContactDialog}>
+                    Compris
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </motion.div>
+        );
+        
+      case 6:
+        return (
+          <motion.div
+            key="step6"
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            variants={stepVariants}
+            className="space-y-6 text-center"
+          >
+            <div className="py-8">
+              <div className="flex justify-center mb-6">
+                <CheckCircle2 className="h-16 w-16 text-green-500" />
+              </div>
+              <h2 className="text-2xl font-bold mb-4">Félicitations !</h2>
+              <p className="text-gray-600 mb-8">
+                Votre inscription est complète. Vous êtes maintenant membre du programme d'affiliation AI Horizon.
+              </p>
+              
+              <Button 
+                size="lg" 
+                onClick={() => navigate('/dashboard')}
+                className="px-8"
+              >
+                Accéder à mon tableau de bord
+              </Button>
+            </div>
+          </motion.div>
+        );
+        
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      {/* Steps indicator */}
+      <div className="hidden md:block mb-12">
+        <nav aria-label="Progress">
+          <ol className="flex justify-between">
+            {steps.map((step) => (
+              <li key={step.id} className={`relative ${
+                step.id === currentStep
+                  ? "text-brand-purple font-semibold"
+                  : step.id < currentStep
+                  ? "text-brand-purple"
+                  : "text-gray-400"
+              }`}>
+                <div className="flex flex-col items-center">
+                  <div className={`w-8 h-8 flex items-center justify-center rounded-full ${
+                    step.id === currentStep
+                      ? "bg-brand-purple text-white"
+                      : step.id < currentStep
+                      ? "bg-brand-purple text-white"
+                      : "bg-gray-200 text-gray-500"
+                  }`}>
+                    {step.id < currentStep ? (
+                      <CheckCircle2 className="h-5 w-5" />
+                    ) : (
+                      <step.icon className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div className="mt-2 text-xs text-center hidden sm:block">
+                    <div>{step.name}</div>
+                    <div className={step.id === currentStep ? "text-gray-500" : "hidden"}>
+                      {step.description}
+                    </div>
+                  </div>
+                </div>
+                
+                {step.id !== steps.length && (
+                  <div className="hidden md:block absolute top-4 left-0 right-0 h-0.5 -translate-y-1/2">
+                    <div className="h-0.5 w-full bg-gray-200">
+                      <div
+                        className="h-0.5 bg-brand-purple transition-all"
+                        style={{
+                          width: step.id < currentStep ? "100%" : "0%",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
+      </div>
+
+      {/* Mobile steps indicator */}
+      <div className="block md:hidden mb-8">
+        <div className="flex justify-between items-center">
+          <div className="text-sm font-medium">
+            Étape {currentStep} sur {steps.length}
+          </div>
+          <div className="text-xs text-gray-500">
+            {steps[currentStep - 1].name}
+          </div>
+        </div>
+        <div className="mt-2 h-2 w-full bg-gray-200 rounded-full">
+          <div
+            className="h-2 bg-brand-purple rounded-full transition-all"
+            style={{
+              width: `${((currentStep - 1) / (steps.length - 1)) * 100}%`,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Form content */}
+      <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 mb-8">
+        <AnimatePresence mode="wait">
+          {renderStepContent()}
+        </AnimatePresence>
+      </div>
+
+      {/* Navigation buttons */}
+      {currentStep !== 5 && currentStep !== 6 && (
+        <div className="flex justify-between mt-8">
+          <Button
+            variant="outline"
+            onClick={prevStep}
+            disabled={currentStep === 1}
+            className="flex items-center"
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" /> Précédent
+          </Button>
+          <Button
+            onClick={nextStep}
+            disabled={isLoading}
+            className="flex items-center"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Chargement...
+              </>
+            ) : (
+              <>
+                Suivant <ChevronRight className="ml-1 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RegistrationSteps;

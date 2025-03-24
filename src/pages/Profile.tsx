@@ -1,20 +1,27 @@
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import Layout from "@/components/Layout";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UploadCloud, Loader2 } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import Layout from "@/components/Layout";
 
-export default function ProfilePage() {
-  const { user } = useAuth();
+const Profile = () => {
+  const { user, isLoading } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     firstName: "",
@@ -23,43 +30,48 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
+    if (!user && !isLoading) {
+      navigate('/');
+      return;
+    }
+
     if (user) {
-      // Load user data from Supabase
-      const fetchUserData = async () => {
+      // Fetch the user profile data
+      const fetchUserProfile = async () => {
         try {
           const { data, error } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
             .single();
 
           if (error) {
-            console.error("Error fetching profile:", error);
+            console.error('Error fetching user profile:', error);
             return;
           }
 
           if (data) {
             setFormData({
-              username: user.email?.split('@')[0] || "",
-              firstName: data.first_name || "",
-              lastName: data.last_name || "",
-              email: user.email || "",
+              username: user.email?.split('@')[0] || '',
+              firstName: data.first_name || '',
+              lastName: data.last_name || '',
+              email: user.email || '',
             });
           }
         } catch (error) {
-          console.error("Error in fetchUserData:", error);
+          console.error('Error in fetchUserProfile:', error);
         }
       };
 
-      fetchUserData();
+      fetchUserProfile();
     }
-  }, [user]);
+  }, [user, isLoading, navigate]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => setProfileImage(e.target.result as string);
+      reader.onload = (e) => setProfileImage(e.target?.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -71,51 +83,53 @@ export default function ProfilePage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    
-    if (!user) {
-      toast({
-        title: "Erreur",
-        description: "Vous devez être connecté pour mettre à jour votre profil",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!user) return;
 
-    setIsLoading(true);
-    
+    setLoading(true);
     try {
-      // Update profile in Supabase
+      // Update the profile in Supabase
       const { error } = await supabase
-        .from("profiles")
+        .from('profiles')
         .update({
           first_name: formData.firstName,
-          last_name: formData.lastName,
+          last_name: formData.lastName
         })
-        .eq("id", user.id);
+        .eq('id', user.id);
 
       if (error) {
         throw error;
       }
 
       toast({
-        description: "Profil mis à jour avec succès",
+        description: "Profil mis à jour avec succès !",
       });
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error('Error updating profile:', error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de la mise à jour du profil",
+        description: "Impossible de mettre à jour le profil. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Chargement du profil...</span>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="responsive-container py-32">
-        <Card className="w-full max-w-md mx-auto bg-card shadow-lg rounded-lg">
+      <div className="flex justify-center items-center min-h-screen p-6">
+        <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">Mon Profil</CardTitle>
           </CardHeader>
@@ -123,7 +137,7 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center mb-6">
               <label className="relative cursor-pointer">
                 <input type="file" className="hidden" onChange={handleFileChange} />
-                <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden border-2 border-brand-purple">
+                <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden border-2 border-brand-purple">
                   {profileImage ? (
                     <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
@@ -131,51 +145,53 @@ export default function ProfilePage() {
                   )}
                 </div>
               </label>
-              <p className="text-sm text-muted-foreground mt-2">Changer ma photo</p>
+              <p className="text-sm text-gray-500 mt-2">Changer ma photo</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="username">Nom d'utilisateur</Label>
+                <Label>Nom d'utilisateur</Label>
                 <Input 
-                  id="username"
                   name="username" 
                   value={formData.username} 
                   onChange={handleChange} 
                   disabled
+                  className="bg-gray-50 dark:bg-gray-700" 
                 />
               </div>
               <div>
-                <Label htmlFor="firstName">Prénom</Label>
+                <Label>Prénom</Label>
                 <Input 
-                  id="firstName"
                   name="firstName" 
                   value={formData.firstName} 
                   onChange={handleChange} 
                 />
               </div>
               <div>
-                <Label htmlFor="lastName">Nom</Label>
+                <Label>Nom</Label>
                 <Input 
-                  id="lastName"
                   name="lastName" 
                   value={formData.lastName} 
                   onChange={handleChange} 
                 />
               </div>
               <div>
-                <Label htmlFor="email">Email</Label>
+                <Label>Email</Label>
                 <Input 
-                  id="email"
                   name="email" 
                   type="email" 
                   value={formData.email} 
                   onChange={handleChange} 
-                  disabled
+                  disabled 
+                  className="bg-gray-50 dark:bg-gray-700"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
+              <Button 
+                type="submit" 
+                className="w-full bg-brand-purple hover:bg-purple-700"
+                disabled={loading}
+              >
+                {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Enregistrement...
@@ -190,4 +206,6 @@ export default function ProfilePage() {
       </div>
     </Layout>
   );
-}
+};
+
+export default Profile;

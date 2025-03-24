@@ -48,10 +48,12 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Tracking click for code: ${code} from ${referrer || 'direct visit'}`);
+
     // Get the affiliate link id
     const { data: linkData, error: linkError } = await supabaseClient
       .from('affiliate_links')
-      .select('id')
+      .select('id, user_id')
       .eq('code', code)
       .single();
 
@@ -65,6 +67,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log(`Found affiliate link with ID: ${linkData.id} for user: ${linkData.user_id}`);
 
     // Record the click
     const { data, error } = await supabaseClient
@@ -90,8 +94,14 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Successfully recorded click with ID: ${data[0].id}`);
+
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ 
+        success: true, 
+        data,
+        message: 'Click successfully tracked' 
+      }),
       { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -104,7 +114,6 @@ serve(async (req) => {
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        
       }
     );
   }
