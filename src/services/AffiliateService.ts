@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 interface RegistrationData {
@@ -50,10 +49,37 @@ export interface ConversionEvent {
   status: string | null;
 }
 
+export interface CommissionTier {
+  id: number;
+  name: string;
+  min_revenue: number;
+  max_revenue: number | null;
+  commission_rate: number;
+  color: string;
+  created_at: string;
+}
+
+export interface UserProgression {
+  id: string;
+  user_id: string;
+  current_tier_id: number;
+  total_revenue: number;
+  total_commission: number;
+  manual_override: boolean;
+  created_at: string;
+  updated_at: string;
+  tier?: CommissionTier;
+}
+
+export interface CommissionExample {
+  description: string;
+  value: number;
+  commission: number;
+}
+
 const STORAGE_KEY = "aihorizon_registration_data";
 
 export const AffiliateService = {
-  // Save registration data to local storage
   saveRegistrationData: (data: RegistrationData): void => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -62,7 +88,6 @@ export const AffiliateService = {
     }
   },
 
-  // Load registration data from local storage
   loadRegistrationData: (): RegistrationData | null => {
     try {
       const data = localStorage.getItem(STORAGE_KEY);
@@ -73,7 +98,6 @@ export const AffiliateService = {
     }
   },
 
-  // Clear registration data from local storage
   clearRegistrationData: (): void => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -82,7 +106,6 @@ export const AffiliateService = {
     }
   },
 
-  // Create an affiliate link in Supabase database
   createAffiliateLink: async (userId: string, code: string) => {
     try {
       console.log("Creating affiliate link for user:", userId, "with code:", code);
@@ -106,8 +129,7 @@ export const AffiliateService = {
       return { data: null, error };
     }
   },
-  
-  // Get all affiliate links for a user
+
   getUserAffiliateLinks: async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -122,7 +144,6 @@ export const AffiliateService = {
     }
   },
 
-  // Get a specific affiliate link for a user (the first one if they have multiple)
   getAffiliateLink: async (userId: string) => {
     try {
       console.log("Getting affiliate link for user:", userId);
@@ -141,24 +162,18 @@ export const AffiliateService = {
     }
   },
 
-  // Generate a unique affiliate code for the user
   generateAffiliateLink: (userId: string, userData?: RegistrationData) => {
-    // Get registration data if not provided
     if (!userData) {
       userData = AffiliateService.loadRegistrationData() || {};
     }
     
-    // Use user data for a personalized link
     const baseUrl = "https://calendly.com/aihorizon98/30min";
     
-    // Build query parameters with user information
     const params = new URLSearchParams();
     
-    // Add ref parameter for tracking
     const userRef = userId.slice(0, 8);
     params.append("ref", userRef);
     
-    // Add name if available
     if (userData.firstName || userData.lastName) {
       const fullName = `${userData.firstName || ''} ${userData.lastName || ''}`.trim();
       if (fullName) {
@@ -166,25 +181,20 @@ export const AffiliateService = {
       }
     }
     
-    // Add email if available
     if (userData.email) {
       params.append("email", userData.email);
     }
     
-    // Add UTM parameters for performance tracking
     params.append("utm_source", "affiliate");
     params.append("utm_medium", "referral");
     params.append("utm_campaign", "aihorizon");
     params.append("utm_id", userId);
     params.append("utm_content", userRef);
     
-    // Build the complete URL
     return `${baseUrl}?${params.toString()}`;
   },
 
-  // Get affiliate statistics for a user
   getAffiliateStats: async (userId: string) => {
-    // Initialize basic statistics
     const stats: AffiliateStats = {
       clicks: 0,
       conversions: 0,
@@ -192,14 +202,11 @@ export const AffiliateService = {
     };
 
     try {
-      // Get user's affiliate links
       const { data: links } = await AffiliateService.getUserAffiliateLinks(userId);
       
       if (links && links.length > 0) {
-        // Get affiliate link IDs
         const linkIds = links.map(link => link.id);
         
-        // Count clicks for these links
         const { count: clickCount, error: clickError } = await supabase
           .from("clicks")
           .select("*", { count: "exact", head: true })
@@ -209,7 +216,6 @@ export const AffiliateService = {
           stats.clicks = clickCount;
         }
 
-        // Count conversions and calculate revenue
         const { data: conversions, error: convError } = await supabase
           .from("conversions")
           .select("*")
@@ -228,20 +234,16 @@ export const AffiliateService = {
     }
   },
 
-  // Get click history for a user's links
   getClickHistory: async (userId: string, limit = 10) => {
     try {
-      // Get user's affiliate links
       const { data: links } = await AffiliateService.getUserAffiliateLinks(userId);
       
       if (!links || links.length === 0) {
         return { data: [], error: null };
       }
       
-      // Get affiliate link IDs
       const linkIds = links.map(link => link.id);
       
-      // Get clicks for these links
       const { data, error } = await supabase
         .from("clicks")
         .select("id, created_at, referrer")
@@ -256,20 +258,16 @@ export const AffiliateService = {
     }
   },
 
-  // Get conversion history for a user's links
   getConversionHistory: async (userId: string, limit = 10) => {
     try {
-      // Get user's affiliate links
       const { data: links } = await AffiliateService.getUserAffiliateLinks(userId);
       
       if (!links || links.length === 0) {
         return { data: [], error: null };
       }
       
-      // Get affiliate link IDs
       const linkIds = links.map(link => link.id);
       
-      // Get conversions for these links
       const { data, error } = await supabase
         .from("conversions")
         .select("id, created_at, product, amount, status")
@@ -284,25 +282,20 @@ export const AffiliateService = {
     }
   },
   
-  // Get performance data for chart
   getPerformanceData: async (userId: string, days = 30) => {
     try {
-      // Get user's affiliate links
       const { data: links } = await AffiliateService.getUserAffiliateLinks(userId);
       
       if (!links || links.length === 0) {
         return { data: [], error: null };
       }
       
-      // Get affiliate link IDs
       const linkIds = links.map(link => link.id);
       
-      // Prepare dates for analysis period
       const today = new Date();
       const startDate = new Date();
       startDate.setDate(today.getDate() - days);
       
-      // Get all clicks for the period
       const { data: clicksData, error: clicksError } = await supabase
         .from("clicks")
         .select("created_at")
@@ -310,7 +303,6 @@ export const AffiliateService = {
         .gte("created_at", startDate.toISOString())
         .lte("created_at", today.toISOString());
         
-      // Get all conversions for the period
       const { data: convsData, error: convsError } = await supabase
         .from("conversions")
         .select("created_at")
@@ -322,27 +314,22 @@ export const AffiliateService = {
         return { data: [], error: clicksError || convsError };
       }
       
-      // Create array for each day in period
       const performanceData = [];
       
       for (let i = 0; i < days; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - (days - 1 - i));
         
-        // Format date as YYYY-MM-DD for comparison
         const dateStr = date.toISOString().split('T')[0];
         
-        // Count clicks for this day
         const clicksForDay = clicksData ? clicksData.filter(click => 
           click.created_at.startsWith(dateStr)
         ).length : 0;
         
-        // Count conversions for this day
         const convsForDay = convsData ? convsData.filter(conv => 
           conv.created_at.startsWith(dateStr)
         ).length : 0;
         
-        // Add to results array
         performanceData.push({
           name: `${date.getDate()}/${date.getMonth() + 1}`,
           clicks: clicksForDay,
@@ -355,5 +342,124 @@ export const AffiliateService = {
       console.error("Error in getPerformanceData:", error);
       return { data: [], error };
     }
+  },
+
+  getCommissionTiers: async () => {
+    try {
+      const { data, error } = await supabase
+        .from("commission_tiers")
+        .select("*")
+        .order("min_revenue", { ascending: true });
+      
+      return { data, error };
+    } catch (error) {
+      console.error("Error in getCommissionTiers:", error);
+      return { data: null, error };
+    }
+  },
+
+  getUserProgression: async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("user_progression")
+        .select(`
+          *,
+          tier:current_tier_id(*)
+        `)
+        .eq("user_id", userId)
+        .single();
+      
+      if (!data && !error) {
+        const { data: lowestTier } = await supabase
+          .from("commission_tiers")
+          .select("*")
+          .order("min_revenue", { ascending: true })
+          .limit(1)
+          .single();
+        
+        if (lowestTier) {
+          const { data: newProgression, error: insertError } = await supabase
+            .from("user_progression")
+            .insert({
+              user_id: userId,
+              current_tier_id: lowestTier.id,
+              total_revenue: 0,
+              total_commission: 0
+            })
+            .select(`
+              *,
+              tier:current_tier_id(*)
+            `)
+            .single();
+          
+          return { data: newProgression, error: insertError };
+        }
+      }
+      
+      return { data, error };
+    } catch (error) {
+      console.error("Error in getUserProgression:", error);
+      return { data: null, error };
+    }
+  },
+
+  getCommissionExamples: (tiers: CommissionTier[]): { tier: CommissionTier, examples: CommissionExample[] }[] => {
+    if (!tiers || tiers.length === 0) return [];
+    
+    return tiers.map(tier => {
+      let examples: CommissionExample[] = [];
+      
+      switch(tier.name) {
+        case 'Bronze':
+          examples = [{
+            description: '1 logo à 200€',
+            value: 200,
+            commission: 200 * (tier.commission_rate / 100)
+          }];
+          break;
+        case 'Argent':
+          examples = [{
+            description: '5 logos (1000€)',
+            value: 1000,
+            commission: 1000 * (tier.commission_rate / 100)
+          }];
+          break;
+        case 'Or':
+          examples = [{
+            description: 'Site à 3000€',
+            value: 3000,
+            commission: 3000 * (tier.commission_rate / 100)
+          }];
+          break;
+        case 'Platine':
+          examples = [{
+            description: 'Presta à 8000€',
+            value: 8000,
+            commission: 8000 * (tier.commission_rate / 100)
+          }];
+          break;
+        case 'Diamant':
+          examples = [{
+            description: 'Presta à 10 000€',
+            value: 10000,
+            commission: 10000 * (tier.commission_rate / 100)
+          }];
+          break;
+        case 'Légende':
+          examples = [{
+            description: 'Ventes cumulées à 25 000€',
+            value: 25000,
+            commission: 25000 * (tier.commission_rate / 100)
+          }];
+          break;
+        default:
+          break;
+      }
+      
+      return {
+        tier,
+        examples
+      };
+    });
   }
 };

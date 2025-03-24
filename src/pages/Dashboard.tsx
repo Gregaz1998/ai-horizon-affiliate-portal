@@ -20,6 +20,7 @@ import {
 import { formatDistance } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import CommissionInfo from "@/components/CommissionInfo";
 
 const Dashboard = () => {
   const { user, isLoading, signOut } = useAuth();
@@ -310,6 +311,9 @@ const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Commission Information Section */}
+          {user && <CommissionInfo userId={user.id} />}
 
           {/* Historique d'activité */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

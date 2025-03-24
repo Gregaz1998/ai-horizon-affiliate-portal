@@ -65,6 +65,36 @@ export type Database = {
           },
         ]
       }
+      commission_tiers: {
+        Row: {
+          color: string | null
+          commission_rate: number
+          created_at: string | null
+          id: number
+          max_revenue: number | null
+          min_revenue: number
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          commission_rate: number
+          created_at?: string | null
+          id?: number
+          max_revenue?: number | null
+          min_revenue: number
+          name: string
+        }
+        Update: {
+          color?: string | null
+          commission_rate?: number
+          created_at?: string | null
+          id?: number
+          max_revenue?: number | null
+          min_revenue?: number
+          name?: string
+        }
+        Relationships: []
+      }
       conversions: {
         Row: {
           affiliate_link_id: string
@@ -174,6 +204,47 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      user_progression: {
+        Row: {
+          created_at: string | null
+          current_tier_id: number
+          id: string
+          manual_override: boolean | null
+          total_commission: number | null
+          total_revenue: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_tier_id: number
+          id?: string
+          manual_override?: boolean | null
+          total_commission?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_tier_id?: number
+          id?: string
+          manual_override?: boolean | null
+          total_commission?: number | null
+          total_revenue?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_progression_current_tier_id_fkey"
+            columns: ["current_tier_id"]
+            isOneToOne: false
+            referencedRelation: "commission_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {

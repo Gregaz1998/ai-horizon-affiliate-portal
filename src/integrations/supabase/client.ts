@@ -26,7 +26,7 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Enable realtime subscription for affiliate_links, clicks, and conversions tables
+// Enable realtime subscription for affiliate_links, clicks, conversions, and profiles tables
 const enableRealtimeForTables = async () => {
   await supabase.channel('schema-db-changes')
     .on('postgres_changes', {
@@ -49,6 +49,16 @@ const enableRealtimeForTables = async () => {
       schema: 'public',
       table: 'profiles',
     }, (payload) => console.log('Change received for profiles!', payload))
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'commission_tiers',
+    }, (payload) => console.log('Change received for commission_tiers!', payload))
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'user_progression',
+    }, (payload) => console.log('Change received for user_progression!', payload))
     .subscribe();
 };
 
