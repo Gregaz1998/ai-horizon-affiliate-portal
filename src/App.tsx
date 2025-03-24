@@ -11,6 +11,7 @@ import Resources from "./pages/Resources";
 import Leaderboard from "./pages/Leaderboard";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Chatbot from "./components/Chatbot";
 import "./App.css";
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
             />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Chatbot />
           <Toaster />
         </AuthProvider>
       </ThemeProvider>
