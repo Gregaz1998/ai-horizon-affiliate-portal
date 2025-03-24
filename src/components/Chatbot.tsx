@@ -32,7 +32,16 @@ const BOT_KNOWLEDGE = [
   { question: "comment sont payées les commissions", answer: "Les commissions sont payées mensuellement par virement bancaire, une fois que votre solde atteint un minimum de 50€. Vous pouvez suivre vos gains en temps réel dans votre tableau de bord." },
   { question: "comment fonctionne le suivi des clics", answer: "Nous utilisons une technologie avancée pour suivre chaque clic sur votre lien d'affiliation. Vous pouvez voir en temps réel combien de personnes ont cliqué sur votre lien dans la section statistiques de votre tableau de bord." },
   { question: "qui est derrière ai horizon", answer: "AI Horizon est une entreprise spécialisée dans l'intelligence artificielle et les solutions digitales innovantes. Nous proposons des services et produits de pointe pour aider les entreprises à se transformer digitalement." },
-  { question: "comment contacter le support", answer: "Vous pouvez contacter notre équipe de support via l'adresse email support@aihorizon.com ou via le formulaire de contact disponible dans la section 'Ressources' de l'application." },
+  { question: "comment contacter le support", answer: "Vous pouvez contacter notre équipe de support via l'adresse email info@aihorizon-agency.com ou par téléphone en cas d'urgence au +32493163742. Vous pouvez également utiliser le formulaire de contact disponible dans la section 'Ressources' de l'application." },
+  { question: "email du support", answer: "L'adresse email du support est info@aihorizon-agency.com" },
+  { question: "numéro de téléphone", answer: "En cas d'urgence, vous pouvez contacter le support au +32493163742" },
+  { question: "comment voir mes statistiques", answer: "Vos statistiques d'affiliation sont disponibles en temps réel dans votre tableau de bord. Vous pouvez y voir le nombre de clics, de rendez-vous confirmés et vos commissions." },
+  { question: "comment améliorer mes performances", answer: "Pour améliorer vos performances d'affiliation, partagez votre lien sur plusieurs canaux, créez du contenu de qualité autour de nos produits, et consultez régulièrement les ressources disponibles dans l'application pour rester à jour sur les meilleures pratiques." },
+  { question: "quels sont les produits que je peux promouvoir", answer: "Vous pouvez promouvoir tous les services et produits d'AI Horizon, incluant nos solutions d'intelligence artificielle, nos services de transformation digitale et nos programmes de formation. Plus de détails sont disponibles dans la section Ressources." },
+  { question: "comment s'inscrire au programme d'affiliation", answer: "Pour s'inscrire au programme d'affiliation, il suffit de créer un compte sur notre plateforme, de remplir votre profil et d'accepter les conditions du programme. Vous recevrez immédiatement votre lien d'affiliation personnalisé." },
+  { question: "quelles sont les conditions du programme", answer: "Les conditions du programme incluent une commission de 10% sur les ventes, un paiement mensuel à partir de 50€ de gains, et l'interdiction de faire de la publicité trompeuse. L'ensemble des conditions est disponible dans la section Ressources du site." },
+  { question: "puis-je avoir plusieurs liens d'affiliation", answer: "Actuellement, chaque affilié dispose d'un seul lien personnalisé. Cependant, vous pouvez suivre séparément les performances de ce lien sur différentes plateformes grâce à notre système de tracking avancé." },
+  { question: "comment fonctionne l'intégration avec calendly", answer: "Notre système est intégré à Calendly pour suivre automatiquement les rendez-vous confirmés provenant de votre lien d'affiliation. Chaque fois qu'un prospect réserve un rendez-vous via votre lien, vous êtes crédité de la commission correspondante." },
 ];
 
 export const Chatbot = () => {
@@ -73,12 +82,22 @@ export const Chatbot = () => {
       }
     }
     
+    // Check for contact information questions specifically
+    if (lowerQuestion.includes("contact") || 
+        lowerQuestion.includes("email") || 
+        lowerQuestion.includes("mail") || 
+        lowerQuestion.includes("urgence") || 
+        lowerQuestion.includes("téléphone") || 
+        lowerQuestion.includes("numéro")) {
+      return "Vous pouvez contacter notre support par email à info@aihorizon-agency.com ou par téléphone en cas d'urgence au +32493163742.";
+    }
+    
     // Default responses if no match is found
     const defaultResponses = [
-      "Je n'ai pas d'information spécifique sur ce sujet. Pourriez-vous me poser une question relative au programme d'affiliation d'AI Horizon ?",
-      "Cette question dépasse mes connaissances actuelles. Je peux vous aider sur le fonctionnement du programme d'affiliation, les commissions, ou le suivi des clics.",
-      "Je vous suggère de consulter la section Ressources pour plus d'informations à ce sujet, ou de contacter notre support à support@aihorizon.com.",
-      "Je suis spécialisé dans les informations concernant notre programme d'affiliation. N'hésitez pas à me demander comment partager votre lien ou consulter vos statistiques."
+      "Je n'ai pas d'information spécifique sur ce sujet. N'hésitez pas à contacter notre support à info@aihorizon-agency.com ou au +32493163742 en cas d'urgence.",
+      "Cette question dépasse mes connaissances actuelles. Je peux vous aider sur le fonctionnement du programme d'affiliation, les commissions, ou le suivi des clics. Pour plus d'informations, contactez-nous à info@aihorizon-agency.com.",
+      "Je vous suggère de consulter la section Ressources pour plus d'informations à ce sujet, ou de contacter notre support à info@aihorizon-agency.com ou au +32493163742 en cas d'urgence.",
+      "Je suis spécialisé dans les informations concernant notre programme d'affiliation. Pour des questions plus spécifiques, n'hésitez pas à contacter notre équipe à info@aihorizon-agency.com."
     ];
     
     return defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
