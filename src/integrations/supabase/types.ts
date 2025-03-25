@@ -34,6 +34,7 @@ export type Database = {
         Row: {
           affiliate_link_id: string
           created_at: string | null
+          device_type: string | null
           id: string
           ip_address: string | null
           referrer: string | null
@@ -42,6 +43,7 @@ export type Database = {
         Insert: {
           affiliate_link_id: string
           created_at?: string | null
+          device_type?: string | null
           id?: string
           ip_address?: string | null
           referrer?: string | null
@@ -50,6 +52,7 @@ export type Database = {
         Update: {
           affiliate_link_id?: string
           created_at?: string | null
+          device_type?: string | null
           id?: string
           ip_address?: string | null
           referrer?: string | null

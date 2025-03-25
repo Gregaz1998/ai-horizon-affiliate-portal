@@ -43,6 +43,9 @@ export const TrackingService = {
         
         if (linkError) throw linkError;
         
+        // Determine device type from user agent
+        const deviceType = navigator.userAgent.toLowerCase().includes('mobile') ? 'mobile' : 'desktop';
+        
         // Record the click
         const { error } = await supabase
           .from('clicks')
@@ -52,7 +55,7 @@ export const TrackingService = {
               referrer: document.referrer,
               user_agent: navigator.userAgent,
               path: window.location.pathname,
-              device_type: navigator.userAgent.toLowerCase().includes('mobile') ? 'mobile' : 'desktop'
+              device_type: deviceType
             }
           ]);
         
@@ -185,7 +188,7 @@ export const TrackingService = {
     }
   },
   
-  // Process device stats from clicks data only
+  // Process device stats from clicks data
   processDeviceStats(clicksData: any[], conversionsData: any[]) {
     const devices = {
       mobile: { clicks: 0, conversions: 0, revenue: 0 },
@@ -209,16 +212,21 @@ export const TrackingService = {
       });
     }
     
-    // We can't group conversions by device_type since it doesn't exist in conversions table
-    // So we just count total conversions and revenue
+    // Count total conversions and revenue
+    let totalConversions = 0;
+    let totalRevenue = 0;
+    
     if (conversionsData && Array.isArray(conversionsData)) {
-      const totalConversions = conversionsData.length;
-      const totalRevenue = conversionsData.reduce((sum, item) => {
-        if (item && typeof item === 'object' && 'status' in item && item.status === 'completed') {
-          return sum + (typeof item.amount === 'number' ? item.amount : 0);
+      conversionsData.forEach(conversion => {
+        if (conversion && typeof conversion === 'object') {
+          totalConversions++;
+          
+          // Only count revenue for completed conversions
+          if (conversion.status === 'completed' && typeof conversion.amount === 'number') {
+            totalRevenue += conversion.amount;
+          }
         }
-        return sum;
-      }, 0);
+      });
       
       // Distribute conversions proportionally based on click ratios
       const totalClicks = Object.values(devices).reduce((sum, device) => sum + device.clicks, 0);
