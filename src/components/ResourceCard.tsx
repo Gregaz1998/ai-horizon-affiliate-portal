@@ -41,9 +41,11 @@ const ResourceCard = ({
       </CardContent>
       <CardFooter className="pt-2 border-t">
         {downloadable ? (
-          <Button variant="outline" className="w-full">
-            <Download className="w-4 h-4 mr-2" />
-            Télécharger
+          <Button asChild variant="outline" className="w-full">
+            <a href={link} target="_blank" rel="noopener noreferrer">
+              <Download className="w-4 h-4 mr-2" />
+              Je télécharge
+            </a>
           </Button>
         ) : (
           <Button asChild variant="outline" className="w-full">

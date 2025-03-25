@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,15 +15,17 @@ const resourcesData = [
     imageUrl: "https://images.unsplash.com/photo-1571171637578-41bc2dd41cd2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     category: "Guide",
     downloadable: true,
+    link: "https://drive.google.com/drive/folders/1ZWcIQHHQ6CgbFk1qGL2BdCComZzlFEAL?usp=share_link",
     type: "guide",
   },
   {
     id: 2,
-    title: "Bannières promotionnelles",
+    title: "Ressources promotionnelles",
     description: "Collection de bannières de haute qualité pour promouvoir AI Horizon sur votre site web.",
     imageUrl: "https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     category: "Visuel",
     downloadable: true,
+    link: "https://drive.google.com/drive/folders/1ZWcIQHHQ6CgbFk1qGL2BdCComZzlFEAL?usp=share_link",
     type: "promotional",
   },
   {
@@ -34,6 +35,7 @@ const resourcesData = [
     imageUrl: "https://images.unsplash.com/photo-1526948531399-320e7e40f0ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     category: "Email",
     downloadable: true,
+    link: "https://drive.google.com/drive/folders/1ZWcIQHHQ6CgbFk1qGL2BdCComZzlFEAL?usp=share_link",
     type: "promotional",
   },
   {
@@ -88,14 +90,12 @@ const Resources = () => {
   const [activeTab, setActiveTab] = useState("all");
 
   const filteredResources = resourcesData.filter((resource) => {
-    // Filter by search query
     const matchesSearch =
       searchQuery === "" ||
       resource.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       resource.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       resource.category.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Filter by tab
     const matchesTab = activeTab === "all" || resource.type === activeTab;
 
     return matchesSearch && matchesTab;
