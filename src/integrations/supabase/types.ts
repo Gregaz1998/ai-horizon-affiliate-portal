@@ -180,27 +180,39 @@ export type Database = {
       }
       profiles: {
         Row: {
+          business_number: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
           id: string
           last_name: string | null
+          service: string | null
+          target_country: string | null
+          target_region: string | null
           updated_at: string | null
         }
         Insert: {
+          business_number?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
           id: string
           last_name?: string | null
+          service?: string | null
+          target_country?: string | null
+          target_region?: string | null
           updated_at?: string | null
         }
         Update: {
+          business_number?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
           id?: string
           last_name?: string | null
+          service?: string | null
+          target_country?: string | null
+          target_region?: string | null
           updated_at?: string | null
         }
         Relationships: []

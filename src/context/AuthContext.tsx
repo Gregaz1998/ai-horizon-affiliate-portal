@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setIsLoading(true);
       // Use an absolute URL for the redirection
       // Important: no complex query parameters that could be incorrectly encoded
-      const redirectTo = `${window.location.origin}/register`;
+      const redirectTo = `${window.location.origin}/register?step=6`;
       
       console.log("Signup data:", email, userData);
       console.log("Redirect URL:", redirectTo);
@@ -189,17 +189,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${window.location.origin}/register`,
+          emailRedirectTo: `${window.location.origin}/register?step=6`,
         }
       });
       
       if (error) {
         console.error("Resend verification email error:", error);
+        toast({
+          title: "Erreur d'envoi",
+          description: "Impossible d'envoyer l'email de vérification. Veuillez réessayer.",
+          variant: "destructive",
+        });
         return { 
           error, 
           emailSent: false 
         };
       }
+      
+      toast({
+        description: "Un nouvel email de vérification a été envoyé. Veuillez vérifier votre boîte de réception.",
+      });
       
       return { 
         error: null, 
@@ -207,6 +216,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     } catch (error) {
       console.error("Error in resendVerificationEmail:", error);
+      toast({
+        title: "Erreur d'envoi",
+        description: "Une erreur s'est produite. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      });
       return { 
         error: error as Error, 
         emailSent: false 

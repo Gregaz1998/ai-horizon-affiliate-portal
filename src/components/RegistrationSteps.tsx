@@ -180,7 +180,7 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
   const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signUp, checkEmailVerification, user } = useAuth();
+  const { signUp, checkEmailVerification, resendVerificationEmail, user } = useAuth();
 
   useEffect(() => {
     setSearchParams({ step: currentStep.toString() });
@@ -593,6 +593,38 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
   const handleCloseContactDialog = () => {
     setShowContactDialog(false);
     navigate('/');
+  };
+
+  const handleResendEmail = async () => {
+    if (resendCooldown > 0 || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      if (!formData.email) {
+        toast({
+          title: "Erreur",
+          description: "Email manquant. Veuillez recommencer l'inscription.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const { emailSent, error } = await resendVerificationEmail(formData.email);
+      
+      if (error) {
+        console.error("Error resending verification email:", error);
+        return;
+      }
+      
+      if (emailSent) {
+        setEmailSent(true);
+        setResendCooldown(30);
+      }
+    } catch (error) {
+      console.error("Error in handleResendEmail:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderStepContent = () => {

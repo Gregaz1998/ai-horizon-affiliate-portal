@@ -28,7 +28,9 @@ const Register = () => {
           setIsVerified(true);
           
           // If the user confirmed their email, move to step 6
-          setSearchParams({ step: "6" });
+          if (step !== 6) {
+            setSearchParams({ step: "6" });
+          }
           
           // Update stored data to reflect verification
           const savedData = AffiliateService.loadRegistrationData();
@@ -61,7 +63,7 @@ const Register = () => {
     };
     
     checkAndUpdateVerification();
-  }, [user, checkEmailVerification, setSearchParams, navigate]);
+  }, [user, checkEmailVerification, setSearchParams, navigate, step]);
 
   // If user is connected and has completed registration (step > 6 or no step specified)
   // then redirect to dashboard
