@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 export const TrackingService = {
@@ -112,8 +111,7 @@ export const TrackingService = {
             affiliate_link_id: linkData.id,
             product: productInfo.name,
             amount: productInfo.amount,
-            status: Math.random() > 0.3 ? "completed" : "pending",
-            device_type: navigator.userAgent.toLowerCase().includes('mobile') ? 'mobile' : 'desktop'
+            status: Math.random() > 0.3 ? "completed" : "pending"
           }
         ]);
       
@@ -153,7 +151,7 @@ export const TrackingService = {
       // Get conversions within the date range
       const { data: conversionsData, error: conversionsError } = await supabase
         .from('conversions')
-        .select('created_at, amount, status, device_type')
+        .select('created_at, amount, status')
         .eq('affiliate_link_id', affiliateLinkId)
         .gte('created_at', startDateStr)
         .lte('created_at', endDateStr)
@@ -164,7 +162,7 @@ export const TrackingService = {
       // Process the data into daily stats
       const dailyStats = this.processDailyStats(clicksData, conversionsData, startDate, days);
       
-      // Get device stats
+      // Get device stats from clicks data only since device_type isn't available in conversions
       const deviceStats = this.processDeviceStats(clicksData, conversionsData);
       
       return {
@@ -173,7 +171,13 @@ export const TrackingService = {
         totalClicks: clicksData.length,
         totalConversions: conversionsData.length,
         conversionRate: clicksData.length > 0 ? (conversionsData.length / clicksData.length) * 100 : 0,
-        totalRevenue: conversionsData.reduce((sum, item) => sum + (item.status === 'completed' ? item.amount : 0), 0)
+        totalRevenue: conversionsData.reduce((sum, item) => {
+          // Only count completed conversions
+          if (item && typeof item === 'object' && 'status' in item && item.status === 'completed') {
+            return sum + (typeof item.amount === 'number' ? item.amount : 0);
+          }
+          return sum;
+        }, 0)
       };
     } catch (error) {
       console.error('Error getting real-time stats:', error);
@@ -181,7 +185,7 @@ export const TrackingService = {
     }
   },
   
-  // Process device stats
+  // Process device stats from clicks data only
   processDeviceStats(clicksData: any[], conversionsData: any[]) {
     const devices = {
       mobile: { clicks: 0, conversions: 0, revenue: 0 },
@@ -190,31 +194,41 @@ export const TrackingService = {
     };
     
     // Count clicks by device
-    if (clicksData) {
+    if (clicksData && Array.isArray(clicksData)) {
       clicksData.forEach(click => {
-        const device = click.device_type || 'unknown';
-        if (devices[device]) {
-          devices[device].clicks += 1;
+        if (click && typeof click === 'object' && 'device_type' in click) {
+          const device = click.device_type || 'unknown';
+          if (devices[device]) {
+            devices[device].clicks += 1;
+          } else {
+            devices.unknown.clicks += 1;
+          }
         } else {
           devices.unknown.clicks += 1;
         }
       });
     }
     
-    // Count conversions by device
-    if (conversionsData) {
-      conversionsData.forEach(conversion => {
-        const device = conversion.device_type || 'unknown';
-        const amount = conversion.status === 'completed' ? conversion.amount : 0;
-        
-        if (devices[device]) {
-          devices[device].conversions += 1;
-          devices[device].revenue += amount;
-        } else {
-          devices.unknown.conversions += 1;
-          devices.unknown.revenue += amount;
+    // We can't group conversions by device_type since it doesn't exist in conversions table
+    // So we just count total conversions and revenue
+    if (conversionsData && Array.isArray(conversionsData)) {
+      const totalConversions = conversionsData.length;
+      const totalRevenue = conversionsData.reduce((sum, item) => {
+        if (item && typeof item === 'object' && 'status' in item && item.status === 'completed') {
+          return sum + (typeof item.amount === 'number' ? item.amount : 0);
         }
-      });
+        return sum;
+      }, 0);
+      
+      // Distribute conversions proportionally based on click ratios
+      const totalClicks = Object.values(devices).reduce((sum, device) => sum + device.clicks, 0);
+      if (totalClicks > 0) {
+        Object.keys(devices).forEach(deviceType => {
+          const ratio = devices[deviceType].clicks / totalClicks;
+          devices[deviceType].conversions = Math.round(totalConversions * ratio);
+          devices[deviceType].revenue = Math.round(totalRevenue * ratio);
+        });
+      }
     }
     
     return Object.entries(devices).map(([name, stats]) => ({

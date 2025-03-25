@@ -70,6 +70,9 @@ serve(async (req) => {
 
     console.log(`Found affiliate link with ID: ${linkData.id} for user: ${linkData.user_id}`);
 
+    // Determine device type from user agent
+    const deviceType = userAgent?.toLowerCase().includes('mobile') ? 'mobile' : 'desktop';
+
     // Record the click with additional information
     const { data, error } = await supabaseClient
       .from('clicks')
@@ -80,7 +83,7 @@ serve(async (req) => {
           user_agent: userAgent,
           ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip'),
           path: path || '/',
-          device_type: userAgent?.toLowerCase().includes('mobile') ? 'mobile' : 'desktop'
+          device_type: deviceType
         }
       ])
       .select();
