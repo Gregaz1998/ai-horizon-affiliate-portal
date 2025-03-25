@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,7 +14,8 @@ import {
   Loader2,
   Building2,
   MapPin,
-  AlertCircle
+  AlertCircle,
+  Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ import {
   PopoverContent,
   PopoverTrigger
 } from "@/components/ui/popover";
+import { Progress } from "@/components/ui/progress";
 
 const steps = [
   {
@@ -175,6 +176,8 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [verificationCheckInterval, setVerificationCheckInterval] = useState<number | null>(null);
   const [manualVerifyDialogOpen, setManualVerifyDialogOpen] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [emailSent, setEmailSent] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signUp, checkEmailVerification, user } = useAuth();
@@ -243,6 +246,20 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
     }
   }, [currentStep, emailConfirmationSent, isEmailVerified]);
 
+  useEffect(() => {
+    let timer: number | null = null;
+    
+    if (resendCooldown > 0) {
+      timer = window.setInterval(() => {
+        setResendCooldown(prev => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [resendCooldown]);
+
   const checkVerificationStatus = async () => {
     try {
       const verified = await checkEmailVerification();
@@ -271,19 +288,16 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
       setIsEmailVerified(true);
       setManualVerifyDialogOpen(false);
       
-      // Save the current registration state
       AffiliateService.saveRegistrationData({
         ...formData,
         emailConfirmationSent: true,
         isEmailVerified: true
       });
       
-      // Create affiliate link in database if user is logged in
       if (user) {
         await AffiliateService.createAffiliateLink(user.id, formData.affiliateLink);
       }
       
-      // Advance to the final step and then redirect to dashboard
       setCurrentStep(6);
       
       toast({
@@ -291,7 +305,6 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         description: "Vous êtes redirigé vers votre tableau de bord.",
       });
       
-      // Short timeout to show the success message before navigating
       setTimeout(() => {
         navigate("/dashboard");
       }, 1500);
@@ -457,23 +470,20 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         return false;
       }
       
-      // Generate trackable affiliate link with UTM parameters
-      const userId = user?.id || 'unknown';
       const baseUrl = "https://calendly.com/aihorizon98/30min";
       const utmParams = new URLSearchParams({
         utm_source: "affiliate",
         utm_medium: "calendly",
         utm_campaign: `${formData.service || 'default'}-${formData.country || 'all'}`,
-        utm_id: userId,
+        utm_id: user?.id || 'unknown',
         utm_content: formData.email.split('@')[0],
-        ref: userId.substring(0, 8),
+        ref: user?.id?.substring(0, 8),
         name: `${formData.firstName.toUpperCase()} ${formData.lastName}`,
         email: formData.email
       });
       
       const calendlyAffiliateLink = `${baseUrl}?${utmParams.toString()}`;
       
-      // Update form data with the generated link
       setFormData(prev => ({
         ...prev,
         affiliateLink: calendlyAffiliateLink
@@ -483,7 +493,6 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         setEmailConfirmationSent(true);
         setCurrentStep(5);
         
-        // Save data with updated affiliate link
         AffiliateService.saveRegistrationData({
           ...formData,
           affiliateLink: calendlyAffiliateLink,
@@ -495,7 +504,6 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
       }
       
       if (user && user.id) {
-        // Save the affiliate link to the database
         const { error: linkError } = await AffiliateService.createAffiliateLink(
           user.id, 
           calendlyAffiliateLink
@@ -511,7 +519,6 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         }
       }
       
-      // Clear registration data and redirect to dashboard
       AffiliateService.clearRegistrationData();
       
       toast({
@@ -519,7 +526,6 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         description: "Vous êtes redirigé vers votre tableau de bord.",
       });
       
-      // Redirect to dashboard
       navigate("/dashboard");
       
       return true;
@@ -1073,8 +1079,9 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
                   Email vérifié avec succès !
                 </h3>
                 <p className="text-green-700 mb-6">
-                  Votre adresse email a été confirmée. Vous pouvez maintenant accéder à votre tableau de bord.
+                  Votre adresse email a été confirmée. Vous allez être redirigé vers votre tableau de bord dans quelques secondes.
                 </p>
+                <Progress value={100} className="h-2 mb-6" />
                 <Button onClick={() => navigate('/dashboard')}>
                   Accéder à mon tableau de bord
                 </Button>
@@ -1084,25 +1091,55 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
                 <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
                   <div className="text-center mb-6">
                     <div className="flex justify-center mb-4">
-                      <CheckCircle2 className="h-12 w-12 text-blue-500" />
+                      <Mail className="h-12 w-12 text-blue-500" />
                     </div>
                     <h3 className="text-xl font-semibold text-blue-800 mb-2">
                       Email de confirmation envoyé !
                     </h3>
                     <p className="text-blue-700">
                       Un email de confirmation a été envoyé à <span className="font-semibold">{formData.email}</span>.
-                      Veuillez vérifier votre boîte de réception et cliquer sur le lien pour confirmer votre adresse email.
+                      Veuillez cliquer sur le lien pour confirmer votre adresse email.
                     </p>
+                    
+                    <div className="mt-6">
+                      <p className="text-blue-700 mb-2 text-sm">
+                        Vous ne pouvez pas continuer tant que votre email n'est pas validé.
+                      </p>
+                    </div>
                   </div>
                   
-                  <div className="flex items-center justify-center space-x-2 mb-6">
+                  <div className="flex items-center justify-center space-x-2 mb-4">
                     <div className="h-2 w-2 bg-blue-400 rounded-full animate-pulse"></div>
                     <div className="h-2 w-2 bg-blue-400 rounded-full animate-pulse delay-150"></div>
                     <div className="h-2 w-2 bg-blue-400 rounded-full animate-pulse delay-300"></div>
                   </div>
                   
-                  <div className="text-center text-sm text-blue-700">
+                  <div className="text-center text-sm text-blue-700 mb-4">
                     En attente de confirmation...
+                  </div>
+                  
+                  <div className="text-center mt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={handleResendEmail}
+                      disabled={resendCooldown > 0 || isLoading}
+                      className="mt-2"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Envoi en cours...
+                        </>
+                      ) : resendCooldown > 0 ? (
+                        <>
+                          Renvoyer l'email ({resendCooldown}s)
+                        </>
+                      ) : (
+                        <>
+                          Renvoyer l'email de confirmation
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
                 
@@ -1116,6 +1153,10 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
                     <li className="flex items-start">
                       <CheckCircle2 className="h-4 w-4 mr-2 mt-0.5 text-green-500 flex-shrink-0" />
                       <span>L'email peut prendre quelques minutes pour arriver.</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle2 className="h-4 w-4 mr-2 mt-0.5 text-green-500 flex-shrink-0" />
+                      <span>Si vous ne recevez pas l'email, utilisez le bouton "Renvoyer l'email".</span>
                     </li>
                   </ul>
                 </div>
@@ -1210,7 +1251,7 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
               </div>
               <h2 className="text-2xl font-bold mb-4">Félicitations !</h2>
               <p className="text-gray-600 mb-8">
-                Votre inscription est complète. Vous êtes maintenant membre du programme d'affiliation AI Horizon.
+                Votre compte est confirmé avec succès ! 🚀 Vous allez être redirigé vers votre tableau de bord.
               </p>
               
               <Button 
@@ -1231,7 +1272,6 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Steps indicator */}
       <div className="hidden md:block mb-12">
         <nav aria-label="Progress">
           <ol className="flex justify-between">
@@ -1283,7 +1323,6 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         </nav>
       </div>
 
-      {/* Mobile steps indicator */}
       <div className="block md:hidden mb-8">
         <div className="flex justify-between items-center">
           <div className="text-sm font-medium">
@@ -1303,14 +1342,12 @@ const RegistrationSteps = ({ initialStep = 1 }: RegistrationStepsProps) => {
         </div>
       </div>
 
-      {/* Form content */}
       <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 mb-8">
         <AnimatePresence mode="wait">
           {renderStepContent()}
         </AnimatePresence>
       </div>
 
-      {/* Navigation buttons */}
       {currentStep !== 5 && currentStep !== 6 && (
         <div className="flex justify-between mt-8">
           <Button

@@ -13,6 +13,7 @@ const Register = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
   const navigate = useNavigate();
   
   // Get current step from URL params or default to 1
@@ -39,10 +40,21 @@ const Register = () => {
             });
           }
           
-          // After a short delay, redirect to dashboard
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 1500);
+          // Start countdown for dashboard redirect
+          let countdown = 3;
+          setRedirectCountdown(countdown);
+          
+          const countdownInterval = setInterval(() => {
+            countdown -= 1;
+            setRedirectCountdown(countdown);
+            
+            if (countdown <= 0) {
+              clearInterval(countdownInterval);
+              navigate("/dashboard");
+            }
+          }, 1000);
+          
+          return () => clearInterval(countdownInterval);
         }
       }
       setIsLoading(false);
@@ -74,11 +86,6 @@ const Register = () => {
           if (!linkData && savedData?.affiliateLink) {
             await AffiliateService.createAffiliateLink(user.id, savedData.affiliateLink);
           }
-          
-          // Short delay before redirecting to dashboard
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 1500);
         }
       }
       setIsLoading(false);
@@ -122,6 +129,17 @@ const Register = () => {
               Créez votre compte en quelques étapes simples et commencez à générer des revenus dès aujourd'hui.
             </p>
           </motion.div>
+
+          {isVerified && step === 6 && (
+            <div className="text-center mb-6">
+              <p className="text-lg font-medium text-green-600">
+                Votre compte est confirmé avec succès ! 🚀
+              </p>
+              <p className="text-gray-600">
+                Vous allez être redirigé vers votre tableau de bord dans {redirectCountdown} secondes...
+              </p>
+            </div>
+          )}
 
           <RegistrationSteps initialStep={step} />
         </div>

@@ -20,6 +20,10 @@ type AuthContextType = {
   }>;
   signOut: () => Promise<void>;
   checkEmailVerification: () => Promise<boolean>;
+  resendVerificationEmail: (email: string) => Promise<{
+    error: Error | null;
+    emailSent: boolean;
+  }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -177,6 +181,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const resendVerificationEmail = async (email: string) => {
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/register`,
+        }
+      });
+      
+      if (error) {
+        console.error("Resend verification email error:", error);
+        return { 
+          error, 
+          emailSent: false 
+        };
+      }
+      
+      return { 
+        error: null, 
+        emailSent: true 
+      };
+    } catch (error) {
+      console.error("Error in resendVerificationEmail:", error);
+      return { 
+        error: error as Error, 
+        emailSent: false 
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signOut = async () => {
     setIsLoading(true);
     try {
@@ -211,6 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         signUp,
         signOut,
         checkEmailVerification,
+        resendVerificationEmail,
       }}
     >
       {children}
