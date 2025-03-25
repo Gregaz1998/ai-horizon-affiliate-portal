@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export const TrackingService = {
-  async trackClick(code: string): Promise<boolean> {
+  async trackClick(code: string): Promise<{success: boolean, stats?: any}> {
     try {
       console.log("Tracking click for code:", code);
       // Try to use the Edge function first
@@ -15,7 +15,8 @@ export const TrackingService = {
         body: JSON.stringify({
           code,
           referrer: document.referrer,
-          userAgent: navigator.userAgent
+          userAgent: navigator.userAgent,
+          path: window.location.pathname
         }),
       });
 
@@ -23,8 +24,12 @@ export const TrackingService = {
         throw new Error('Failed to track click');
       }
 
-      console.log("Click tracked successfully via edge function");
-      return true;
+      const result = await response.json();
+      console.log("Click tracked successfully via edge function", result);
+      return { 
+        success: true,
+        stats: result.stats 
+      };
     } catch (error) {
       console.error('Error tracking click via edge function:', error);
       
@@ -33,7 +38,7 @@ export const TrackingService = {
         // Get the affiliate link ID
         const { data: linkData, error: linkError } = await supabase
           .from('affiliate_links')
-          .select('id')
+          .select('id, user_id')
           .eq('code', code)
           .single();
         
@@ -46,17 +51,29 @@ export const TrackingService = {
             {
               affiliate_link_id: linkData.id,
               referrer: document.referrer,
-              user_agent: navigator.userAgent
+              user_agent: navigator.userAgent,
+              path: window.location.pathname,
+              device_type: navigator.userAgent.toLowerCase().includes('mobile') ? 'mobile' : 'desktop'
             }
           ]);
         
         if (error) throw error;
         
         console.log("Click tracked successfully via client fallback");
-        return true;
+        
+        // Get updated stats
+        const { data: stats, error: statsError } = await supabase.rpc(
+          'get_affiliate_stats',
+          { affiliate_user_id: linkData.user_id }
+        );
+        
+        return { 
+          success: true,
+          stats: statsError ? null : stats
+        };
       } catch (fallbackError) {
         console.error('Error in fallback tracking:', fallbackError);
-        return false;
+        return { success: false };
       }
     }
   },
@@ -67,7 +84,7 @@ export const TrackingService = {
       // Get the affiliate link ID
       const { data: linkData, error: linkError } = await supabase
         .from('affiliate_links')
-        .select('id')
+        .select('id, user_id')
         .eq('code', code)
         .single();
       
@@ -95,7 +112,8 @@ export const TrackingService = {
             affiliate_link_id: linkData.id,
             product: productInfo.name,
             amount: productInfo.amount,
-            status: Math.random() > 0.3 ? "completed" : "pending"
+            status: Math.random() > 0.3 ? "completed" : "pending",
+            device_type: navigator.userAgent.toLowerCase().includes('mobile') ? 'mobile' : 'desktop'
           }
         ]);
       
@@ -124,7 +142,7 @@ export const TrackingService = {
       // Get clicks within the date range
       const { data: clicksData, error: clicksError } = await supabase
         .from('clicks')
-        .select('created_at')
+        .select('created_at, device_type')
         .eq('affiliate_link_id', affiliateLinkId)
         .gte('created_at', startDateStr)
         .lte('created_at', endDateStr)
@@ -135,7 +153,7 @@ export const TrackingService = {
       // Get conversions within the date range
       const { data: conversionsData, error: conversionsError } = await supabase
         .from('conversions')
-        .select('created_at, amount, status')
+        .select('created_at, amount, status, device_type')
         .eq('affiliate_link_id', affiliateLinkId)
         .gte('created_at', startDateStr)
         .lte('created_at', endDateStr)
@@ -146,8 +164,12 @@ export const TrackingService = {
       // Process the data into daily stats
       const dailyStats = this.processDailyStats(clicksData, conversionsData, startDate, days);
       
+      // Get device stats
+      const deviceStats = this.processDeviceStats(clicksData, conversionsData);
+      
       return {
         dailyStats,
+        deviceStats,
         totalClicks: clicksData.length,
         totalConversions: conversionsData.length,
         conversionRate: clicksData.length > 0 ? (conversionsData.length / clicksData.length) * 100 : 0,
@@ -157,6 +179,48 @@ export const TrackingService = {
       console.error('Error getting real-time stats:', error);
       throw error;
     }
+  },
+  
+  // Process device stats
+  processDeviceStats(clicksData: any[], conversionsData: any[]) {
+    const devices = {
+      mobile: { clicks: 0, conversions: 0, revenue: 0 },
+      desktop: { clicks: 0, conversions: 0, revenue: 0 },
+      unknown: { clicks: 0, conversions: 0, revenue: 0 }
+    };
+    
+    // Count clicks by device
+    if (clicksData) {
+      clicksData.forEach(click => {
+        const device = click.device_type || 'unknown';
+        if (devices[device]) {
+          devices[device].clicks += 1;
+        } else {
+          devices.unknown.clicks += 1;
+        }
+      });
+    }
+    
+    // Count conversions by device
+    if (conversionsData) {
+      conversionsData.forEach(conversion => {
+        const device = conversion.device_type || 'unknown';
+        const amount = conversion.status === 'completed' ? conversion.amount : 0;
+        
+        if (devices[device]) {
+          devices[device].conversions += 1;
+          devices[device].revenue += amount;
+        } else {
+          devices.unknown.conversions += 1;
+          devices.unknown.revenue += amount;
+        }
+      });
+    }
+    
+    return Object.entries(devices).map(([name, stats]) => ({
+      name,
+      ...stats
+    }));
   },
   
   // Process daily stats for charting
@@ -210,5 +274,58 @@ export const TrackingService = {
     });
     
     return dailyStats.sort((a, b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+  },
+  
+  // Subscribe to real-time updates for a user's affiliate data
+  subscribeToRealTimeUpdates(userId: string, callback: (data: any) => void) {
+    // Get the user's affiliate link ID first
+    const getUserAffiliateLink = async () => {
+      const { data: linkData } = await supabase
+        .from('affiliate_links')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1)
+        .single();
+      
+      return linkData?.id;
+    };
+    
+    // Set up subscription
+    return getUserAffiliateLink().then(linkId => {
+      if (!linkId) return null;
+      
+      // Create a channel for real-time updates
+      const channel = supabase.channel('db-changes')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'clicks',
+          filter: `affiliate_link_id=eq.${linkId}`
+        }, (payload) => {
+          console.log('New click detected:', payload);
+          callback({
+            type: 'click',
+            data: payload.new
+          });
+        })
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'conversions',
+          filter: `affiliate_link_id=eq.${linkId}`
+        }, (payload) => {
+          console.log('New conversion detected:', payload);
+          callback({
+            type: 'conversion',
+            data: payload.new
+          });
+        })
+        .subscribe();
+      
+      // Return unsubscribe function
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
   }
 };

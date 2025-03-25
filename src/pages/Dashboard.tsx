@@ -1,10 +1,10 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { 
   Loader2, Copy, BarChart3, Home, Users, FileText, 
-  Settings, ExternalLink
+  Settings, ExternalLink, Smartphone, Monitor
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -15,18 +15,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/context/ThemeContext";
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Legend, PieChart, Pie, Cell
 } from "recharts";
 import { formatDistance } from "date-fns";
 import { fr } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import CommissionInfo from "@/components/CommissionInfo";
+import { useMobile } from "@/hooks/useMobile";
+import { TrackingService } from "@/services/TrackingService";
 
 const Dashboard = () => {
   const { user, isLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { theme } = useTheme();
+  const isMobile = useMobile();
   const [stats, setStats] = useState<AffiliateStats | null>(null);
   const [affiliateLink, setAffiliateLink] = useState<string | null>(null);
   const [clickHistory, setClickHistory] = useState<ClickEvent[]>([]);
@@ -34,132 +38,129 @@ const Dashboard = () => {
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [performanceData, setPerformanceData] = useState([]);
+  const [deviceData, setDeviceData] = useState([]);
+  const [linkData, setLinkData] = useState<AffiliateLink | null>(null);
+
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658'];
+
+  const fetchAffiliateData = useCallback(async () => {
+    if (user) {
+      try {
+        setLoadingStats(true);
+        setLoadingHistory(true);
+        
+        // Vérifier d'abord si nous avons un lien dans le localStorage
+        const regData = AffiliateService.loadRegistrationData();
+        let supabaseLink = null;
+        
+        // Essayer de charger le lien d'affiliation depuis Supabase
+        const { data: linkData, error } = await AffiliateService.getAffiliateLink(user.id);
+        
+        if (linkData) {
+          // Si nous avons trouvé un lien dans Supabase, utilisons-le
+          supabaseLink = linkData;
+          setLinkData(linkData);
+          // Mettre à jour la variable affiliateLink avec le code du lien
+          setAffiliateLink(linkData.code);
+        } else if (!error) {
+          // Si pas de lien dans Supabase, créons-en un
+          // Générer un lien personnalisé avec les données de l'utilisateur
+          const generatedLink = AffiliateService.generateAffiliateLink(user.id, regData);
+          
+          // Créer le lien dans Supabase
+          const { data: newLink } = await AffiliateService.createAffiliateLink(user.id, generatedLink);
+          
+          if (newLink) {
+            setLinkData(newLink);
+          }
+          
+          // Mettre à jour la variable affiliateLink
+          setAffiliateLink(generatedLink);
+          
+          // Mettre à jour les données d'inscription si nécessaire
+          if (regData) {
+            AffiliateService.saveRegistrationData({
+              ...regData,
+              affiliateLink: generatedLink
+            });
+          }
+        }
+        
+        // Charger les statistiques
+        const { data: statsData } = await AffiliateService.getAffiliateStats(user.id);
+        if (statsData) {
+          setStats(statsData);
+        } else {
+          setStats({
+            clicks: 0,
+            conversions: 0,
+            revenue: 0
+          });
+        }
+        
+        // Charger l'historique des clics
+        const { data: clickData } = await AffiliateService.getClickHistory(user.id);
+        if (clickData) {
+          setClickHistory(clickData);
+        }
+        
+        // Charger l'historique des conversions
+        const { data: conversionData } = await AffiliateService.getConversionHistory(user.id);
+        if (conversionData) {
+          setConversionHistory(conversionData);
+        }
+        
+        // Si nous avons un lien d'affiliation, charger les statistiques détaillées
+        if (linkData) {
+          // Charger les données de performance pour le graphique
+          const { data: realTimeStats } = await TrackingService.getRealTimeStats(linkData.id, 30);
+          if (realTimeStats) {
+            setPerformanceData(realTimeStats.dailyStats || []);
+            setDeviceData(realTimeStats.deviceStats || []);
+          }
+        }
+        
+      } catch (error) {
+        console.error("Error fetching affiliate data:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger vos données d'affiliation. Veuillez réessayer.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingStats(false);
+        setLoadingHistory(false);
+      }
+    }
+  }, [user, toast]);
 
   useEffect(() => {
     if (!user && !isLoading) {
       navigate("/");
     }
 
-    const fetchAffiliateData = async () => {
-      if (user) {
-        try {
-          setLoadingStats(true);
-          setLoadingHistory(true);
-          
-          // Vérifier d'abord si nous avons un lien dans le localStorage
-          const regData = AffiliateService.loadRegistrationData();
-          let supabaseLink = null;
-          
-          // Essayer de charger le lien d'affiliation depuis Supabase
-          const { data: linkData, error } = await AffiliateService.getAffiliateLink(user.id);
-          
-          if (linkData) {
-            // Si nous avons trouvé un lien dans Supabase, utilisons-le
-            supabaseLink = linkData;
-            // Mettre à jour la variable affiliateLink avec le code du lien
-            setAffiliateLink(linkData.code);
-          } else if (!error) {
-            // Si pas de lien dans Supabase, créons-en un
-            // Générer un lien personnalisé avec les données de l'utilisateur
-            const generatedLink = AffiliateService.generateAffiliateLink(user.id, regData);
-            
-            // Créer le lien dans Supabase
-            await AffiliateService.createAffiliateLink(user.id, generatedLink);
-            
-            // Mettre à jour la variable affiliateLink
-            setAffiliateLink(generatedLink);
-            
-            // Mettre à jour les données d'inscription si nécessaire
-            if (regData) {
-              AffiliateService.saveRegistrationData({
-                ...regData,
-                affiliateLink: generatedLink
-              });
-            }
-          }
-          
-          // Charger les statistiques
-          const { data: statsData } = await AffiliateService.getAffiliateStats(user.id);
-          if (statsData) {
-            setStats(statsData);
-          } else {
-            setStats({
-              clicks: 0,
-              conversions: 0,
-              revenue: 0
-            });
-          }
-          
-          // Charger l'historique des clics
-          const { data: clickData } = await AffiliateService.getClickHistory(user.id);
-          if (clickData) {
-            setClickHistory(clickData);
-          }
-          
-          // Charger l'historique des conversions
-          const { data: conversionData } = await AffiliateService.getConversionHistory(user.id);
-          if (conversionData) {
-            setConversionHistory(conversionData);
-          }
-          
-          // Charger les données de performance pour le graphique
-          const { data: perfData } = await AffiliateService.getPerformanceData(user.id, 30);
-          if (perfData) {
-            setPerformanceData(perfData);
-          }
-          
-        } catch (error) {
-          console.error("Error fetching affiliate data:", error);
-          toast({
-            title: "Erreur",
-            description: "Impossible de charger vos données d'affiliation. Veuillez réessayer.",
-            variant: "destructive",
-          });
-        } finally {
-          setLoadingStats(false);
-          setLoadingHistory(false);
-        }
-      }
-    };
-
     fetchAffiliateData();
     
     // Mettre en place la mise à jour en temps réel
-    const setupRealtimeUpdates = () => {
-      if (user) {
-        const channel = supabase
-          .channel('public:clicks')
-          .on('postgres_changes', 
-            { event: 'INSERT', schema: 'public', table: 'clicks' }, 
-            (payload) => {
-              console.log('New click!', payload);
-              // Mettre à jour les statistiques et l'historique
-              fetchAffiliateData();
-            }
-          )
-          .on('postgres_changes', 
-            { event: 'INSERT', schema: 'public', table: 'conversions' }, 
-            (payload) => {
-              console.log('New conversion!', payload);
-              // Mettre à jour les statistiques et l'historique
-              fetchAffiliateData();
-            }
-          )
-          .subscribe();
-          
-        return () => {
-          supabase.removeChannel(channel);
-        };
+    let unsubscribe: (() => void) | null = null;
+    
+    if (user) {
+      TrackingService.subscribeToRealTimeUpdates(user.id, (update) => {
+        console.log('Real-time update received:', update);
+        // Rafraîchir les données
+        fetchAffiliateData();
+      }).then(unsub => {
+        unsubscribe = unsub;
+      });
+    }
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
     
-    const cleanup = setupRealtimeUpdates();
-    
-    return () => {
-      if (cleanup) cleanup();
-    };
-    
-  }, [user, isLoading, navigate, toast]);
+  }, [user, isLoading, navigate, fetchAffiliateData]);
 
   const copyLinkToClipboard = () => {
     if (affiliateLink) {
@@ -167,6 +168,32 @@ const Dashboard = () => {
       toast({
         description: "Lien d'affiliation copié dans le presse-papiers !",
       });
+    }
+  };
+
+  // Pour tester le suivi des clics
+  const testClick = async () => {
+    if (affiliateLink) {
+      const result = await TrackingService.trackClick(affiliateLink);
+      if (result.success) {
+        toast({
+          description: "Test de clic effectué avec succès !",
+        });
+        fetchAffiliateData();
+      }
+    }
+  };
+
+  // Pour tester les conversions
+  const testConversion = async () => {
+    if (affiliateLink) {
+      const success = await TrackingService.createSampleConversion(affiliateLink);
+      if (success) {
+        toast({
+          description: "Test de conversion effectué avec succès !",
+        });
+        fetchAffiliateData();
+      }
     }
   };
 
@@ -194,9 +221,9 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-900 shadow-sm py-4 px-6">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold">AI Horizon Affilié</h1>
+      <header className="bg-white dark:bg-gray-900 shadow-sm py-4 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center">
+          <h1 className="text-xl font-bold mb-2 sm:mb-0">AI Horizon Affilié</h1>
           <div className="flex items-center space-x-4">
             <div>
               <span className="text-sm text-gray-500 dark:text-gray-400">Solde actuel:</span>
@@ -230,11 +257,12 @@ const Dashboard = () => {
                   <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-x-auto">
                     <p className="text-sm font-medium break-all">{affiliateLink}</p>
                   </div>
-                  <div className="flex space-x-3">
+                  <div className="flex flex-wrap gap-2">
                     <Button 
                       variant="default" 
                       onClick={copyLinkToClipboard}
                       className="flex items-center"
+                      size={isMobile ? "sm" : "default"}
                     >
                       <Copy className="h-4 w-4 mr-2" /> Copier le lien
                     </Button>
@@ -242,8 +270,25 @@ const Dashboard = () => {
                       variant="outline" 
                       onClick={() => window.open(affiliateLink, '_blank')}
                       className="flex items-center"
+                      size={isMobile ? "sm" : "default"}
                     >
-                      <ExternalLink className="h-4 w-4 mr-2" /> Ouvrir dans un nouvel onglet
+                      <ExternalLink className="h-4 w-4 mr-2" /> Ouvrir
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={testClick}
+                      className="flex items-center"
+                      size={isMobile ? "sm" : "default"}
+                    >
+                      Test Clic
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={testConversion}
+                      className="flex items-center"
+                      size={isMobile ? "sm" : "default"}
+                    >
+                      Test Conversion
                     </Button>
                   </div>
                 </div>
@@ -290,27 +335,78 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Graphique de performance */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance des 30 derniers jours</CardTitle>
-              <CardDescription>Évolution de vos clics et rendez-vous confirmés</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="clicks" stroke="#8884d8" fill="#8884d8" name="Clics" />
-                    <Area type="monotone" dataKey="conversions" stroke="#82ca9d" fill="#82ca9d" name="Rendez-vous" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Graphiques de performance */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Graphique d'évolution */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance des 30 derniers jours</CardTitle>
+                <CardDescription>Évolution de vos clics et rendez-vous confirmés</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={performanceData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area type="monotone" dataKey="clicks" stroke="#8884d8" fill="#8884d8" name="Clics" />
+                      <Area type="monotone" dataKey="conversions" stroke="#82ca9d" fill="#82ca9d" name="Rendez-vous" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Graphique par appareil */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Répartition par appareil</CardTitle>
+                <CardDescription>Performance selon le type d'appareil</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-80">
+                  {isMobile ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={deviceData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="clicks"
+                          nameKey="name"
+                          label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {deviceData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={deviceData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="clicks" name="Clics" fill="#8884d8" />
+                        <Bar dataKey="conversions" name="Conversions" fill="#82ca9d" />
+                        <Bar dataKey="revenue" name="Revenus (€)" fill="#ffc658" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Commission Information Section */}
           {user && <CommissionInfo userId={user.id} />}

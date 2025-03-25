@@ -36,7 +36,7 @@ serve(async (req) => {
     }
 
     // Parse the request body
-    const { code, referrer, userAgent } = await req.json();
+    const { code, referrer, userAgent, path } = await req.json();
 
     if (!code) {
       return new Response(
@@ -48,7 +48,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Tracking click for code: ${code} from ${referrer || 'direct visit'}`);
+    console.log(`Tracking click for code: ${code} from ${referrer || 'direct visit'} on path: ${path || 'unknown'}`);
 
     // Get the affiliate link id
     const { data: linkData, error: linkError } = await supabaseClient
@@ -70,7 +70,7 @@ serve(async (req) => {
 
     console.log(`Found affiliate link with ID: ${linkData.id} for user: ${linkData.user_id}`);
 
-    // Record the click
+    // Record the click with additional information
     const { data, error } = await supabaseClient
       .from('clicks')
       .insert([
@@ -79,6 +79,8 @@ serve(async (req) => {
           referrer,
           user_agent: userAgent,
           ip_address: req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip'),
+          path: path || '/',
+          device_type: userAgent?.toLowerCase().includes('mobile') ? 'mobile' : 'desktop'
         }
       ])
       .select();
@@ -96,10 +98,17 @@ serve(async (req) => {
 
     console.log(`Successfully recorded click with ID: ${data[0].id}`);
 
+    // Get updated stats to return
+    const { data: stats, error: statsError } = await supabaseClient.rpc(
+      'get_affiliate_stats',
+      { affiliate_user_id: linkData.user_id }
+    );
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         data,
+        stats: statsError ? null : stats,
         message: 'Click successfully tracked' 
       }),
       { 

@@ -7,6 +7,7 @@ import RegistrationSteps from "@/components/RegistrationSteps";
 import { useAuth } from "@/context/AuthContext";
 import { AffiliateService } from "@/services/AffiliateService";
 import { Loader2 } from "lucide-react";
+import { useMobile } from "@/hooks/useMobile";
 
 const Register = () => {
   const { user, checkEmailVerification } = useAuth();
@@ -15,6 +16,7 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [redirectCountdown, setRedirectCountdown] = useState(3);
   const navigate = useNavigate();
+  const isMobile = useMobile();
   
   // Get current step from URL params or default to 1
   const step = searchParams.get("step") ? parseInt(searchParams.get("step") || "1") : 1;
@@ -99,7 +101,7 @@ const Register = () => {
   if (isLoading) {
     return (
       <Layout>
-        <section className="pt-32 pb-20">
+        <section className="pt-24 md:pt-32 pb-20">
           <div className="flex justify-center items-center min-h-[50vh]">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
@@ -113,21 +115,21 @@ const Register = () => {
 
   return (
     <Layout>
-      <section className="pt-32 pb-20">
+      <section className="pt-24 md:pt-32 pb-20 px-4">
         <div className="responsive-container">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="max-w-4xl mx-auto text-center mb-12"
+            className="max-w-4xl mx-auto text-center mb-8 md:mb-12"
           >
             <span className="inline-block px-3 py-1 bg-purple-100 text-brand-purple rounded-full text-sm font-medium mb-4">
               Programme d'affiliation
             </span>
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">
+            <h1 className="text-2xl md:text-4xl font-bold mb-4">
               Rejoignez notre réseau d'affiliés
             </h1>
-            <p className="text-lg text-gray-600">
+            <p className="text-md md:text-lg text-gray-600">
               Créez votre compte en quelques étapes simples et commencez à générer des revenus dès aujourd'hui.
             </p>
           </motion.div>
