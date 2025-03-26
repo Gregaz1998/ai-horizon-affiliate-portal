@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,7 +16,7 @@ const resourcesData = [
     imageUrl: "https://images.unsplash.com/photo-1571171637578-41bc2dd41cd2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     category: "Guide",
     downloadable: true,
-    link: "https://drive.google.com/drive/folders/1ZWcIQHHQ6CgbFk1qGL2BdCComZzlFEAL?usp=share_link",
+    link: "https://drive.google.com/drive/folders/1fLcfVRH31fuA7S4n5ZGjHqlLzu5H2dm7?usp=sharing",
     type: "guide",
   },
   {
@@ -35,16 +36,16 @@ const resourcesData = [
     imageUrl: "https://images.unsplash.com/photo-1526948531399-320e7e40f0ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     category: "Email",
     downloadable: true,
-    link: "https://drive.google.com/drive/folders/1ZWcIQHHQ6CgbFk1qGL2BdCComZzlFEAL?usp=share_link",
+    link: "https://drive.google.com/drive/folders/1O6U4l6GQNJkxg9YHM3yS4pNFwtn8qPwh?usp=sharing",
     type: "promotional",
   },
   {
     id: 4,
     title: "Webinaire : Maximiser vos revenus d'affiliation",
     description: "Apprenez des stratégies avancées pour optimiser vos revenus d'affiliation avec AI Horizon.",
-    imageUrl: "https://images.unsplash.com/photo-1591115765373-5207764f72e4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1591115765373-5207764f72e4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80?blur=20",
     category: "Webinaire",
-    link: "#",
+    comingSoon: true,
     type: "training",
   },
   {
@@ -54,33 +55,34 @@ const resourcesData = [
     imageUrl: "https://images.unsplash.com/photo-1611926653458-09294b3142bf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
     category: "Social Media",
     downloadable: true,
+    link: "https://drive.google.com/drive/folders/1TeJbHRKW1MNAjoREQBafunVwOc97XruD?usp=sharing",
     type: "promotional",
   },
   {
     id: 6,
     title: "Guide SEO pour affiliés",
     description: "Apprenez à optimiser votre contenu pour les moteurs de recherche et augmenter votre trafic.",
-    imageUrl: "https://images.unsplash.com/photo-1432888622747-4eb9a8f5a70d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1432888622747-4eb9a8f5a70d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80?blur=20",
     category: "Guide",
-    downloadable: true,
+    comingSoon: true,
     type: "guide",
   },
   {
     id: 7,
     title: "Cours : Marketing d'affiliation avancé",
     description: "Formation complète sur les techniques avancées du marketing d'affiliation.",
-    imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80?blur=20",
     category: "Formation",
-    link: "#",
+    comingSoon: true,
     type: "training",
   },
   {
     id: 8,
     title: "Analyse de cas concrets",
     description: "Études de cas de nos affiliés les plus performants et leurs stratégies gagnantes.",
-    imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+    imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80?blur=20",
     category: "Étude de cas",
-    link: "#",
+    comingSoon: true,
     type: "guide",
   },
 ];

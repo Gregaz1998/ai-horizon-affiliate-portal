@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Clock } from "lucide-react";
 
 interface ResourceCardProps {
   title: string;
@@ -10,6 +10,7 @@ interface ResourceCardProps {
   category: string;
   link?: string;
   downloadable?: boolean;
+  comingSoon?: boolean;
 }
 
 const ResourceCard = ({
@@ -19,6 +20,7 @@ const ResourceCard = ({
   category,
   link,
   downloadable = false,
+  comingSoon = false,
 }: ResourceCardProps) => {
   return (
     <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg card-hover h-full flex flex-col">
@@ -40,7 +42,12 @@ const ResourceCard = ({
         <p className="text-gray-600">{description}</p>
       </CardContent>
       <CardFooter className="pt-2 border-t">
-        {downloadable ? (
+        {comingSoon ? (
+          <Button variant="outline" className="w-full" disabled>
+            <Clock className="w-4 h-4 mr-2" />
+            À venir prochainement
+          </Button>
+        ) : downloadable ? (
           <Button asChild variant="outline" className="w-full">
             <a href={link} target="_blank" rel="noopener noreferrer">
               <Download className="w-4 h-4 mr-2" />
